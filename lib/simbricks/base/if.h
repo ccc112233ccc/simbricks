@@ -56,6 +56,16 @@ enum SimbricksBaseIfSyncMode {
   kSimbricksBaseIfSyncRequired,
 };
 
+enum ConnState {
+  kConnClosed = 0,
+  kConnListening,
+  kConnConnecting,
+  kConnAwaitHandshakeRxTx,
+  kConnAwaitHandshakeRx,
+  kConnAwaitHandshakeTx,
+  kConnOpen,
+};
+
 /** Parameters for a SimBricks interface */
 struct SimbricksBaseIfParams {
   /** Link latency/propagation delay [picoseconds] */

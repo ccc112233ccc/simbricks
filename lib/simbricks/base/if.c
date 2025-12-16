@@ -40,16 +40,6 @@
 
 #include <simbricks/base/proto.h>
 
-enum ConnState {
-  kConnClosed = 0,
-  kConnListening,
-  kConnConnecting,
-  kConnAwaitHandshakeRxTx,
-  kConnAwaitHandshakeRx,
-  kConnAwaitHandshakeTx,
-  kConnOpen,
-};
-
 int SimbricksBaseIfSHMPoolCreate(struct SimbricksBaseIfSHMPool *pool,
                                  const char *path, size_t pool_size) {
   pool->path = path;
