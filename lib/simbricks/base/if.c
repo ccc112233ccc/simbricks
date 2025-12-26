@@ -40,6 +40,40 @@
 
 #include <simbricks/base/proto.h>
 
+/* Compatibility fallbacks for macOS / non-Linux platforms */
+#ifndef MAP_POPULATE
+#define MAP_POPULATE 0
+#endif
+
+#ifndef SOCK_NONBLOCK
+/* accept4 on Linux accepts SOCK_NONBLOCK; map to O_NONBLOCK on other OSes */
+#define SOCK_NONBLOCK O_NONBLOCK
+#endif
+
+/* accept4 compatibility: use native accept4 on Linux, fallback to accept + fcntl */
+static int accept4_compat(int sockfd, struct sockaddr *addr, socklen_t *addrlen,
+                          int flags) {
+#ifdef __linux__
+  return accept4(sockfd, addr, addrlen, flags);
+#else
+  int fd = accept(sockfd, addr, addrlen);
+  if (fd == -1)
+    return -1;
+  if (flags & SOCK_NONBLOCK) {
+    int fl = fcntl(fd, F_GETFL, 0);
+    if (fl == -1) {
+      close(fd);
+      return -1;
+    }
+    if (fcntl(fd, F_SETFL, fl | O_NONBLOCK) == -1) {
+      close(fd);
+      return -1;
+    }
+  }
+  return fd;
+#endif
+}
+
 enum ConnState {
   kConnClosed = 0,
   kConnListening,
@@ -73,6 +107,11 @@ int SimbricksBaseIfSHMPoolCreate(struct SimbricksBaseIfSHMPool *pool,
     perror("SimbricksBaseIfSHMPoolCreate: mmap failed");
     return -1;
   }
+
+#if MAP_POPULATE == 0 && defined(POSIX_MADV_WILLNEED)
+  /* MAP_POPULATE not available: advise kernel to prefetch pages */
+  posix_madvise(pool->base, pool_size, POSIX_MADV_WILLNEED);
+#endif
 
   memset(pool->base, 0, pool_size);
   return 0;
@@ -168,7 +207,7 @@ int SimbricksBaseIfInit(struct SimbricksBaseIf *base_if,
 
 static int AcceptOnBaseIf(struct SimbricksBaseIf *base_if) {
   int flags = (!base_if->params.blocking_conn ? SOCK_NONBLOCK : 0);
-  base_if->conn_fd = accept4(base_if->listen_fd, NULL, NULL, flags);
+  base_if->conn_fd = accept4_compat(base_if->listen_fd, NULL, NULL, flags);
   if (base_if->conn_fd >= 0) {
     close(base_if->listen_fd);
     base_if->listen_fd = -1;

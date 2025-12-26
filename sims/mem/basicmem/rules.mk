@@ -25,7 +25,7 @@ include mk/subdir_pre.mk
 bin_basicmem := $(d)basicmem
 
 OBJS := $(d)basicmem.o
-LDLIBS := -lelf
+# LDLIBS := -lelf
 
 $(bin_basicmem): $(OBJS) $(lib_mem) $(lib_base)
 

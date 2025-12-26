@@ -23,10 +23,10 @@
 include mk/subdir_pre.mk
 
 $(eval $(call subdir,basicmem))
-$(eval $(call subdir,memnic))
-$(eval $(call subdir,memswitch))
-$(eval $(call subdir,netmem))
-$(eval $(call subdir,interconnect))
-$(eval $(call subdir,terminal))
+# $(eval $(call subdir,memnic))
+# $(eval $(call subdir,memswitch))
+# $(eval $(call subdir,netmem))
+# $(eval $(call subdir,interconnect))
+# $(eval $(call subdir,terminal))
 
 include mk/subdir_post.mk

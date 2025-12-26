@@ -39,13 +39,8 @@ VFLAGS = +1364-2005ext+v \
     -Wno-CASEINCOMPLETE -Wno-UNSIGNED $(EXTRA_VFLAGS)
 
 
-$(eval $(call subdir,docker))
 $(eval $(call subdir,lib))
 $(eval $(call subdir,sims))
-$(eval $(call subdir,dist))
-$(eval $(call subdir,doc))
-$(eval $(call subdir,images))
-$(eval $(call subdir,symphony))
 
 
 all: $(ALL_ALL)

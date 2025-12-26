@@ -23,7 +23,7 @@
  */
 
 #include <fcntl.h>
-#include <libelf.h>
+// #include <libelf.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -182,71 +182,6 @@ void PollH2M(struct SimbricksMemIf *memif, uint64_t cur_ts) {
   SimbricksMemIfH2MInDone(memif, msg);
 }
 
-bool LoadElf(const char *elf_file) {
-  elf_version(EV_CURRENT);
-
-  int fd = open(elf_file, O_RDONLY);
-  Elf *elf = elf_begin(fd, ELF_C_READ, NULL);
-  if (!elf) {
-    fprintf(stderr, "failed to load elf: %s\n", elf_errmsg(elf_errno()));
-    return false;
-  }
-
-  size_t file_size;
-  const char *raw_data = elf_rawfile(elf, &file_size);
-
-  size_t ident_size;
-  const char* ident = elf_getident(elf, &ident_size);
-  bool is_64 = ident[EI_CLASS] == ELFCLASS64;
-
-  size_t hdr_num;
-  if (elf_getphdrnum(elf, &hdr_num)) {
-    fprintf(stderr, "failed to get phdnum\n");
-    return false;
-  }
-
-  if (is_64) {
-    Elf64_Phdr *phdr = elf64_getphdr(elf);
-
-    for (size_t i = 0; i < hdr_num; ++i) {
-      if (phdr[i].p_type != PT_LOAD) {
-        continue;
-      }
-      if (phdr[i].p_filesz == 0) {
-        continue;
-      }
-      
-      if (phdr[i].p_vaddr + phdr[i].p_memsz > size) {
-        fprintf(stderr, "elf does not fit inside memory\n");
-        return false;
-      }
-      memcpy(mem_array + phdr[i].p_vaddr, raw_data + phdr[i].p_offset, phdr[i].p_filesz);
-    }
-  } else {
-    Elf32_Phdr *phdr = elf32_getphdr(elf);
-
-    for (size_t i = 0; i < hdr_num; ++i) {
-      if (phdr[i].p_type != PT_LOAD) {
-        continue;
-      }
-      if (phdr[i].p_filesz == 0) {
-        continue;
-      }
-      
-      if (phdr[i].p_vaddr + phdr[i].p_memsz > size) {
-        fprintf(stderr, "elf does not fit inside memory\n");
-        return false;
-      }
-      memcpy(mem_array + phdr[i].p_vaddr, raw_data + phdr[i].p_offset, phdr[i].p_filesz);
-    }
-  }
-
-  elf_end(elf);
-  close(fd);
-
-  return true;
-}
-
 int main(int argc, char *argv[]) {
   signal(SIGINT, sigint_handler);
   signal(SIGUSR1, sigusr1_handler);
@@ -286,13 +221,6 @@ int main(int argc, char *argv[]) {
   mem_array = (uint8_t *)calloc(size, sizeof(uint8_t));
   if (!mem_array) {
     perror("no array allocated\n");
-  }
-
-  if (elf_file != NULL) {
-    if (!LoadElf(elf_file)) {
-      fprintf(stderr, "faild to load ELF binary %s\n", elf_file);
-      return EXIT_FAILURE;
-    }
   }
 
   if (!MemifInit(&memif, shmPath, &memParams)) {
