@@ -1,4 +1,4 @@
-# Copyright 2022 Max Planck Institute for Software Systems, and
+# Copyright 2024 Max Planck Institute for Software Systems, and
 # National University of Singapore
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -22,12 +22,13 @@
 
 include mk/subdir_pre.mk
 
-$(eval $(call subdir,basicmem))
-$(eval $(call subdir,memstim))
-# $(eval $(call subdir,memnic))
-# $(eval $(call subdir,memswitch))
-# $(eval $(call subdir,netmem))
-# $(eval $(call subdir,interconnect))
-# $(eval $(call subdir,terminal))
+bin_memstim := $(d)memstim
+
+OBJS := $(d)memstim.o
+
+$(bin_memstim): $(OBJS) $(lib_mem) $(lib_base)
+
+CLEAN := $(bin_memstim) $(OBJS)
+ALL := $(bin_memstim)
 
 include mk/subdir_post.mk
