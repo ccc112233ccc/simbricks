@@ -30,6 +30,10 @@
 
 #include <simbricks/base/proto.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /******************************************************************************/
 /* Initialization messages on Unix socket */
 
@@ -115,5 +119,9 @@ union SimbricksProtoMemH2M {
   struct SimbricksProtoMemH2MWrite write;
 } __attribute__((packed));
 SIMBRICKS_PROTO_MSG_SZCHECK(union SimbricksProtoMemH2M);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // SIMBRICKS_MEM_PROTO_H_

@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
 import argparse
 import json
+import logging
 import os
 import shutil
 import signal
@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List
 
 try:
@@ -51,55 +52,56 @@ class Simulator:
     ports: List[str]
 
 
-def load_config(path: str) -> Dict:
-    with open(path, "r", encoding="utf-8") as handle:
-        raw = handle.read()
-    if path.endswith(".json"):
+def load_config(path: Path) -> Dict:
+    raw = path.read_text(encoding="utf-8")
+    if path.suffix == ".json":
         return json.loads(raw)
     if yaml is None:
         raise RuntimeError("PyYAML is required for YAML topology files")
     return yaml.safe_load(raw)
 
 
-def resolve_path(base_dir: str, raw_path: str) -> str:
-    if os.path.isabs(raw_path):
-        return raw_path
-    return os.path.abspath(os.path.join(base_dir, raw_path))
+def resolve_path(base_dir: Path, raw_path: str) -> Path:
+    p = Path(raw_path)
+    if p.is_absolute():
+        return p
+    return (base_dir / p).resolve()
 
 
-def prepare_channel(base_dir: str, channel_cfg: Dict) -> ChannelInfo:
+def prepare_channel(base_dir: Path, channel_cfg: Dict) -> ChannelInfo:
     channel_type = channel_cfg["type"]
     options = channel_cfg.get("options", {})
     socket_path = resolve_path(base_dir, options.get("socket_path", "-"))
     entries = int(options.get("entries", DEFAULT_ENTRIES))
     entry_size = int(options.get("entry_size", DEFAULT_ENTRY_SIZE))
-    shm_path = ""
+
+    shm_path = Path("-")
     shm_size = 0
 
     if channel_type == "shm_ring":
         shm_path = resolve_path(base_dir, options["shm_path"])
         shm_size = int(options.get("shm_size", entries * entry_size * 2))
     elif channel_type == "socket":
-        shm_path = "-"
+        shm_path = Path("-")
     else:
         raise ValueError(f"Unsupported channel type: {channel_type}")
 
-    if socket_path != "-":
-        os.makedirs(os.path.dirname(socket_path), exist_ok=True)
-        if os.path.exists(socket_path):
-            os.unlink(socket_path)
+    if str(socket_path) != "-":
+        socket_path.parent.mkdir(parents=True, exist_ok=True)
+        if socket_path.exists():
+            socket_path.unlink()
 
     if channel_type == "shm_ring":
-        os.makedirs(os.path.dirname(shm_path), exist_ok=True)
-        if os.path.exists(shm_path):
-            os.unlink(shm_path)
+        shm_path.parent.mkdir(parents=True, exist_ok=True)
+        if shm_path.exists():
+            shm_path.unlink()
         with open(shm_path, "wb") as handle:
             handle.truncate(shm_size)
 
     return ChannelInfo(
         channel_type=channel_type,
-        socket_path=socket_path,
-        shm_path=shm_path,
+        socket_path=str(socket_path),
+        shm_path=str(shm_path),
         shm_size=shm_size,
         entries=entries,
         entry_size=entry_size,
@@ -119,7 +121,7 @@ def parse_simulators(cfg: Dict) -> Dict[str, Simulator]:
     return simulators
 
 
-def build_ports(cfg: Dict, base_dir: str) -> Dict[str, List[PortInfo]]:
+def build_ports(cfg: Dict, base_dir: Path) -> Dict[str, List[PortInfo]]:
     simulators = parse_simulators(cfg)
     ports_by_sim: Dict[str, List[PortInfo]] = {name: [] for name in simulators}
 
@@ -164,9 +166,9 @@ def build_ports(cfg: Dict, base_dir: str) -> Dict[str, List[PortInfo]]:
     return ports_by_sim
 
 
-def write_port_file(path: str, ports: List[PortInfo]) -> None:
+def write_port_file(path: Path, ports: List[PortInfo]) -> None:
     with open(path, "w", encoding="utf-8") as handle:
-        handle.write("# SimBricks manager ports v1\n")
+        handle.write("# UBSIM manager ports v1\n")
         for port in ports:
             shm_path = port.shm_path if port.shm_path else "-"
             handle.write(
@@ -176,9 +178,17 @@ def write_port_file(path: str, ports: List[PortInfo]) -> None:
             )
 
 
+def repo_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
 def run_simulators(cfg: Dict, ports_by_sim: Dict[str, List[PortInfo]]) -> int:
     simulators = parse_simulators(cfg)
-    tmpdir = tempfile.mkdtemp(prefix="simbricks-manager-")
+    tmp_base = repo_root() / "tmp"
+    tmp_base.mkdir(parents=True, exist_ok=True)
+    run_dir = tmp_base / f"ubsim-run-{int(time.time())}-{os.getpid()}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+
     procs: List[subprocess.Popen] = []
 
     def cleanup() -> None:
@@ -195,12 +205,14 @@ def run_simulators(cfg: Dict, ports_by_sim: Dict[str, List[PortInfo]]) -> int:
             for port in ports:
                 if port.socket_path != "-" and os.path.exists(port.socket_path):
                     os.unlink(port.socket_path)
-                if port.shm_path and port.shm_path != "-" and os.path.exists(port.shm_path):
+                if port.shm_path and port.shm_path != "-" and os.path.exists(
+                    port.shm_path
+                ):
                     os.unlink(port.shm_path)
-        shutil.rmtree(tmpdir, ignore_errors=True)
+        shutil.rmtree(run_dir, ignore_errors=True)
 
     def handle_signal(signum, _frame):
-        print(f"Manager received signal {signum}, shutting down", file=sys.stderr)
+        logging.error("manager received signal %s, shutting down", signum)
         cleanup()
         sys.exit(1)
 
@@ -209,14 +221,11 @@ def run_simulators(cfg: Dict, ports_by_sim: Dict[str, List[PortInfo]]) -> int:
 
     try:
         for sim in simulators.values():
-            port_file = os.path.join(tmpdir, f"{sim.name}.ports")
+            port_file = run_dir / f"{sim.name}.ports"
             write_port_file(port_file, ports_by_sim[sim.name])
             env = os.environ.copy()
-            env["SIMBRICKS_MANAGER_PORTS"] = port_file
-            proc = subprocess.Popen(
-                [sim.exec_path] + sim.args,
-                env=env,
-            )
+            env["UBSIM_MANAGER_PORTS"] = str(port_file)
+            proc = subprocess.Popen([sim.exec_path] + sim.args, env=env)
             procs.append(proc)
 
         while True:
@@ -239,12 +248,17 @@ def run_simulators(cfg: Dict, ports_by_sim: Dict[str, List[PortInfo]]) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="SimBricks central manager")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] manager: %(message)s",
+    )
+
+    parser = argparse.ArgumentParser(description="UBSIM central manager")
     parser.add_argument("topology", help="Topology configuration file (YAML/JSON)")
     args = parser.parse_args()
 
-    config_path = os.path.abspath(args.topology)
-    config_dir = os.path.dirname(config_path)
+    config_path = Path(args.topology).resolve()
+    config_dir = config_path.parent
     cfg = load_config(config_path)
     ports_by_sim = build_ports(cfg, config_dir)
     return run_simulators(cfg, ports_by_sim)

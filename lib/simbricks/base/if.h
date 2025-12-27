@@ -38,6 +38,10 @@
 
 #include <simbricks/base/proto.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Handle for a SHM pool. Treat as opaque. */
 struct SimbricksBaseIfSHMPool {
   const char *path;
@@ -394,5 +398,9 @@ static inline size_t SimbricksBaseIfOutMsgLen(struct SimbricksBaseIf *base_if) {
 static inline bool SimbricksBaseIfSyncEnabled(struct SimbricksBaseIf *base_if) {
   return base_if->sync;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // SIMBRICKS_BASE_IF_H_
