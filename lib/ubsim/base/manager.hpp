@@ -30,11 +30,10 @@ class ManagerPortLoader {
 class ChannelAttachment {
  public:
   ChannelAttachment();
-  bool Attach(UbsimBaseIf *base_if, UbsimBaseIfParams *params,
-              const ManagerPort &port);
+  bool Attach(BaseIf *base_if, BaseIfParams *params, const ManagerPort &port);
 
  private:
-  UbsimBaseIfSHMPool pool_;
+  ShmPool pool_;
 };
 
 }  // namespace ubsim

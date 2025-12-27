@@ -7,74 +7,66 @@
 
 namespace ubsim {
 
-struct MemIf {
-  UbsimMemIf raw;
-};
+using MemIf = ubsim::MemIf;
 
-inline void DefaultMemParams(UbsimBaseIfParams *params) {
-  UbsimMemIfDefaultParams(params);
+inline BaseIfParams DefaultMemParams() { return MemIf::DefaultParams(); }
+
+inline volatile UbsimProtoMemH2M *H2MOutAlloc(MemIf *mem, uint64_t ts) {
+  return mem->H2MOutAlloc(ts);
 }
 
-inline volatile union UbsimProtoMemH2M *H2MOutAlloc(MemIf *mem,
-                                                        uint64_t ts) {
-  return UbsimMemIfH2MOutAlloc(&mem->raw, ts);
-}
-
-inline void H2MOutSend(MemIf *mem, volatile union UbsimProtoMemH2M *msg,
+inline void H2MOutSend(MemIf *mem, volatile UbsimProtoMemH2M *msg,
                        uint8_t type) {
-  UbsimMemIfH2MOutSend(&mem->raw, msg, type);
+  mem->H2MOutSend(msg, type);
 }
 
 inline int H2MOutSync(MemIf *mem, uint64_t ts) {
-  return UbsimMemIfH2MOutSync(&mem->raw, ts);
+  return mem->H2MOutSync(ts);
 }
 
 inline size_t H2MOutMsgLen(MemIf *mem) {
-  return UbsimMemIfH2MOutMsgLen(&mem->raw);
+  return mem->H2MOutMsgLen();
 }
 
-inline volatile union UbsimProtoMemH2M *H2MInPoll(MemIf *mem,
-                                                      uint64_t ts) {
-  return UbsimMemIfH2MInPoll(&mem->raw, ts);
+inline volatile UbsimProtoMemH2M *H2MInPoll(MemIf *mem, uint64_t ts) {
+  return mem->H2MInPoll(ts);
 }
 
-inline uint8_t H2MInType(MemIf *mem, volatile union UbsimProtoMemH2M *msg) {
-  return UbsimMemIfH2MInType(&mem->raw, msg);
+inline uint8_t H2MInType(MemIf *mem, volatile UbsimProtoMemH2M *msg) {
+  return mem->H2MInType(msg);
 }
 
-inline void H2MInDone(MemIf *mem, volatile union UbsimProtoMemH2M *msg) {
-  UbsimMemIfH2MInDone(&mem->raw, msg);
+inline void H2MInDone(MemIf *mem, volatile UbsimProtoMemH2M *msg) {
+  mem->H2MInDone(msg);
 }
 
 inline uint64_t H2MInTimestamp(MemIf *mem) {
-  return UbsimMemIfH2MInTimestamp(&mem->raw);
+  return mem->H2MInTimestamp();
 }
 
-inline volatile union UbsimProtoMemM2H *M2HOutAlloc(MemIf *mem,
-                                                        uint64_t ts) {
-  return UbsimMemIfM2HOutAlloc(&mem->raw, ts);
+inline volatile UbsimProtoMemM2H *M2HOutAlloc(MemIf *mem, uint64_t ts) {
+  return mem->M2HOutAlloc(ts);
 }
 
-inline void M2HOutSend(MemIf *mem, volatile union UbsimProtoMemM2H *msg,
+inline void M2HOutSend(MemIf *mem, volatile UbsimProtoMemM2H *msg,
                        uint8_t type) {
-  UbsimMemIfM2HOutSend(&mem->raw, msg, type);
+  mem->M2HOutSend(msg, type);
 }
 
-inline volatile union UbsimProtoMemM2H *M2HInPoll(MemIf *mem,
-                                                      uint64_t ts) {
-  return UbsimMemIfM2HInPoll(&mem->raw, ts);
+inline volatile UbsimProtoMemM2H *M2HInPoll(MemIf *mem, uint64_t ts) {
+  return mem->M2HInPoll(ts);
 }
 
-inline uint8_t M2HInType(MemIf *mem, volatile union UbsimProtoMemM2H *msg) {
-  return UbsimMemIfM2HInType(&mem->raw, msg);
+inline uint8_t M2HInType(MemIf *mem, volatile UbsimProtoMemM2H *msg) {
+  return mem->M2HInType(msg);
 }
 
-inline void M2HInDone(MemIf *mem, volatile union UbsimProtoMemM2H *msg) {
-  UbsimMemIfM2HInDone(&mem->raw, msg);
+inline void M2HInDone(MemIf *mem, volatile UbsimProtoMemM2H *msg) {
+  mem->M2HInDone(msg);
 }
 
 inline uint64_t M2HInTimestamp(MemIf *mem) {
-  return UbsimMemIfM2HInTimestamp(&mem->raw);
+  return mem->M2HInTimestamp();
 }
 
 }  // namespace ubsim

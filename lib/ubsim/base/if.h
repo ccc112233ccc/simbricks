@@ -25,382 +25,145 @@
 #ifndef UBSIM_BASE_IF_H_
 #define UBSIM_BASE_IF_H_
 
-#ifdef __cplusplus
-// FIXME
-#include <ubsim/base/cxxatomicfix.h>
-#else
-#include <stdatomic.h>
-#endif
-
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 #include <ubsim/base/proto.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace ubsim {
 
-/** Handle for a SHM pool. Treat as opaque. */
-struct UbsimBaseIfSHMPool {
-  const char *path;
-  int fd;
-  void *base;
-  size_t size;
-  size_t pos;
+class ShmPool {
+ public:
+  ShmPool();
+
+  int Create(const std::string &path, size_t pool_size);
+  int MapFd(int fd);
+  int Map(const std::string &path);
+  int Unmap();
+  int Unlink();
+
+  const std::string &path() const { return path_; }
+  int fd() const { return fd_; }
+  void *base() const { return base_; }
+  size_t size() const { return size_; }
+  size_t pos() const { return pos_; }
+  void set_pos(size_t pos) { pos_ = pos; }
+
+ private:
+  std::string path_;
+  int fd_ = -1;
+  void *base_ = nullptr;
+  size_t size_ = 0;
+  size_t pos_ = 0;
 };
 
-enum UbsimBaseIfSyncMode {
-  /** No synchronization enabled. */
-  kUbsimBaseIfSyncDisabled,
-  /** Synchronization enabled if both peers request it. */
-  kUbsimBaseIfSyncOptional,
-  /** Enable synchronization and error if not both support it. */
-  kUbsimBaseIfSyncRequired,
+enum class SyncMode {
+  kDisabled,
+  kOptional,
+  kRequired,
 };
 
-/** Parameters for a Ubsim interface */
-struct UbsimBaseIfParams {
-  /** Link latency/propagation delay [picoseconds] */
-  uint64_t link_latency;
-  /** Maximum gap between sync messages [picoseconds] */
-  uint64_t sync_interval;
-  /** Unix socket path to listen on/connect to */
-  const char *sock_path;
-  /** Synchronization mode: disabled, optional, required */
-  enum UbsimBaseIfSyncMode sync_mode;
-
-  /** for connecters and listeners choose blocking vs. non-blocking. */
-  bool blocking_conn;
-
-  /** For listeners: Number of entries in incoming queue*/
-  size_t in_num_entries;
-  /** For listeners: Size of individual entries in incoming queue */
-  size_t in_entries_size;
-  /** For listeners: Number of entries in outgoing queue */
-  size_t out_num_entries;
-  /** For listeners: Size of individual entries in outgoing queue */
-  size_t out_entries_size;
-
-  uint64_t upper_layer_proto;
+struct BaseIfParams {
+  uint64_t link_latency = 0;
+  uint64_t sync_interval = 0;
+  std::string sock_path;
+  SyncMode sync_mode = SyncMode::kOptional;
+  bool blocking_conn = false;
+  size_t in_num_entries = 0;
+  size_t in_entries_size = 0;
+  size_t out_num_entries = 0;
+  size_t out_entries_size = 0;
+  uint64_t upper_layer_proto = 0;
 };
 
-/** Handle for a Ubsim base interface. Treat as opaque. */
-struct UbsimBaseIf {
-  void *in_queue;
-  size_t in_pos;
-  size_t in_elen;
-  size_t in_enum;
-  uint64_t in_timestamp;
+class BaseIf {
+ public:
+  BaseIf();
 
-  void *out_queue;
-  size_t out_pos;
-  size_t out_elen;
-  size_t out_enum;
-  uint64_t out_timestamp;
+  int Init(const BaseIfParams &params);
+  int ManagerSetup(ShmPool *pool, size_t in_offset, size_t out_offset,
+                   size_t in_entries, size_t out_entries, size_t in_entry_size,
+                   size_t out_entry_size);
+  int Listen(ShmPool *pool);
+  int Connect();
+  int Connected();
+  int ConnFd() const;
 
-  bool in_terminated;
+  int IntroSend(const void *payload, size_t payload_len);
+  int IntroRecv(void *payload, size_t *payload_len);
+  int IntroFd() const;
 
-  int conn_state;
-  int sync;
-  struct UbsimBaseIfParams params;
-  struct UbsimBaseIfSHMPool *shm;
-  int listen_fd;
-  int conn_fd;
-  bool listener;
+  void Close();
+  void Unlink();
+
+  uint8_t InType(volatile UbsimProtoBaseMsg *msg) const;
+  volatile UbsimProtoBaseMsg *InPeek(uint64_t timestamp);
+  volatile UbsimProtoBaseMsg *InPoll(uint64_t timestamp);
+  void InDone(volatile UbsimProtoBaseMsg *msg);
+  uint64_t InTimestamp() const;
+  bool InTerminated() const;
+
+  volatile UbsimProtoBaseMsg *OutAlloc(uint64_t timestamp);
+  void OutSend(volatile UbsimProtoBaseMsg *msg, uint8_t msg_type);
+  int OutSync(uint64_t timestamp);
+  uint64_t OutNextSync() const;
+  size_t OutMsgLen() const;
+  bool SyncEnabled() const;
+
+  BaseIfParams &params() { return params_; }
+  const BaseIfParams &params() const { return params_; }
+
+  static size_t SHMSize(const BaseIfParams &params);
+
+ private:
+  enum class ConnState {
+    kClosed = 0,
+    kListening,
+    kConnecting,
+    kAwaitHandshakeRxTx,
+    kAwaitHandshakeRx,
+    kAwaitHandshakeTx,
+    kOpen,
+  };
+
+  int Accept();
+
+  void *in_queue_ = nullptr;
+  size_t in_pos_ = 0;
+  size_t in_elen_ = 0;
+  size_t in_enum_ = 0;
+  uint64_t in_timestamp_ = 0;
+
+  void *out_queue_ = nullptr;
+  size_t out_pos_ = 0;
+  size_t out_elen_ = 0;
+  size_t out_enum_ = 0;
+  uint64_t out_timestamp_ = 0;
+
+  bool in_terminated_ = false;
+
+  ConnState conn_state_ = ConnState::kClosed;
+  bool sync_ = false;
+  BaseIfParams params_{};
+  ShmPool *shm_ = nullptr;
+  int listen_fd_ = -1;
+  int conn_fd_ = -1;
+  bool listener_ = false;
 };
 
-struct UbsimBaseIfEstablishData {
-  struct UbsimBaseIf *base_if;
-
-  const void *tx_intro;
-  size_t tx_intro_len;
-
-  void *rx_intro;
-  size_t rx_intro_len;
+struct EstablishData {
+  BaseIf *base_if = nullptr;
+  const void *tx_intro = nullptr;
+  size_t tx_intro_len = 0;
+  void *rx_intro = nullptr;
+  size_t rx_intro_len = 0;
 };
 
-/** Create and map a new shared memory pool with the specified path and size. */
-int UbsimBaseIfSHMPoolCreate(struct UbsimBaseIfSHMPool *pool,
-                                 const char *path, size_t pool_size);
-/** Map existing shared memory pool by file descriptor. */
-int UbsimBaseIfSHMPoolMapFd(struct UbsimBaseIfSHMPool *pool, int fd);
-/** Map existing shared memory pool by path. */
-int UbsimBaseIfSHMPoolMap(struct UbsimBaseIfSHMPool *pool,
-                              const char *path);
-/** Unmap shared memory pool, without unlinking it. */
-int UbsimBaseIfSHMPoolUnmap(struct UbsimBaseIfSHMPool *pool);
-/** Delete but don't unmap shared memory pool. */
-int UbsimBaseIfSHMPoolUnlink(struct UbsimBaseIfSHMPool *pool);
+int ConnsWait(const std::vector<BaseIf *> &base_ifs);
+int Establish(std::vector<EstablishData> *ifs);
 
-/** Initialize params struct with default values */
-void UbsimBaseIfDefaultParams(struct UbsimBaseIfParams *params);
-
-/** Required SHM size for these parameters */
-size_t UbsimBaseIfSHMSize(struct UbsimBaseIfParams *params);
-
-int UbsimBaseIfInit(struct UbsimBaseIf *base_if,
-                        struct UbsimBaseIfParams *params);
-int UbsimBaseIfManagerSetup(struct UbsimBaseIf *base_if,
-                                struct UbsimBaseIfSHMPool *pool,
-                                size_t in_offset, size_t out_offset,
-                                size_t in_entries, size_t out_entries,
-                                size_t in_entry_size,
-                                size_t out_entry_size);
-
-/** Create listening base interface. Note this does not wait for a connector. */
-int UbsimBaseIfListen(struct UbsimBaseIf *base_if,
-                          struct UbsimBaseIfSHMPool *pool);
-/** Initiate connection for base interface. Note this is asynchronous. */
-int UbsimBaseIfConnect(struct UbsimBaseIf *base_if);
-/** Check if incoming/outgoing connection is established . (non-blocking) */
-int UbsimBaseIfConnected(struct UbsimBaseIf *base_if);
-/** FD to wait on for listen or connect event. */
-int UbsimBaseIfConnFd(struct UbsimBaseIf *base_if);
-/** Block till base_if is connected or failed */
-int UbsimBaseIfConnsWait(struct UbsimBaseIf **base_ifs, unsigned n);
-
-/** Send intro. */
-int UbsimBaseIfIntroSend(struct UbsimBaseIf *base_if,
-                             const void *payload, size_t payload_len);
-/** Receive intro. */
-int UbsimBaseIfIntroRecv(struct UbsimBaseIf *base_if, void *payload,
-                             size_t *payload_len);
-/** FD to wait on for intro events. */
-int UbsimBaseIfIntroFd(struct UbsimBaseIf *base_if);
-
-/**
- * Completely establish multiple base-ifs in parallel. This handles the parallel
- * connecting and handshake transmission and reception. Expects all base ifs to
- * be in non-blocking mode.
- *
- * @param ifs Array of structs with info about each baseif including pointers
- *            and lengths for intro messages.
- * @param n   Number of ifs to establish.
- *
- * @return 0 on success, != 0 otherwise.
- */
-int UbsimBaseIfEstablish(struct UbsimBaseIfEstablishData *ifs,
-                             size_t n);
-
-void UbsimBaseIfClose(struct UbsimBaseIf *base_if);
-void UbsimBaseIfUnlink(struct UbsimBaseIf *base_if);
-
-/**
- * Read message type from received message.
- *
- * @param base_if  Base interface handle (connected).
- * @param msg      Pointer to the previously received message.
- */
-static inline uint8_t UbsimBaseIfInType(
-    struct UbsimBaseIf *base_if,
-    volatile union UbsimProtoBaseMsg *msg) {
-  return (msg->header.own_type & ~UBSIM_PROTO_MSG_OWN_MASK);
-}
-
-/**
- * Poll for an incoming message without advancing the position if one is found.
- * Message must be retrieved again with a call to `UbsimBaseIfInPoll`
- *
- * @param base_if   Base interface handle (connected).
- * @param timestamp Current timestamp (in picoseconds).
- * @return Pointer to the message struct if successful, NULL otherwise.
- */
-static inline volatile union UbsimProtoBaseMsg *UbsimBaseIfInPeek(
-    struct UbsimBaseIf *base_if, uint64_t timestamp) {
-  volatile union UbsimProtoBaseMsg *msg =
-      (volatile union UbsimProtoBaseMsg *)(void *)((uint8_t *)
-                                                           base_if->in_queue +
-                                                       base_if->in_pos *
-                                                           base_if->in_elen);
-  uint8_t own_type = atomic_load_explicit(
-      (volatile _Atomic(uint8_t) *)&msg->header.own_type, memory_order_acquire);
-
-  /* message not ready */
-  if ((own_type & UBSIM_PROTO_MSG_OWN_MASK) != UBSIM_PROTO_MSG_OWN_CON)
-    return NULL;
-
-  /* if in sync mode, wait till message is ready */
-  base_if->in_timestamp = msg->header.timestamp;
-  if (base_if->sync && base_if->in_timestamp > timestamp)
-    return NULL;
-
-  return msg;
-}
-
-/**
- * Poll for an incoming message. After processing the message must be freed by
- * calling `UbsimBaseIfInDone`.
- *
- * @param base_if   Base interface handle (connected).
- * @param timestamp Current timestamp (in picoseconds).
- * @return Pointer to the message struct if successful, NULL otherwise.
- */
-static inline volatile union UbsimProtoBaseMsg *UbsimBaseIfInPoll(
-    struct UbsimBaseIf *base_if, uint64_t timestamp) {
-  volatile union UbsimProtoBaseMsg *msg =
-      UbsimBaseIfInPeek(base_if, timestamp);
-
-  if (msg != NULL) {
-    base_if->in_pos = (base_if->in_pos + 1) % base_if->in_enum;
-
-    if (UbsimBaseIfInType(base_if, msg) ==
-        UBSIM_PROTO_MSG_TYPE_TERMINATE) {
-      base_if->in_terminated = true;
-      base_if->sync = false;
-      base_if->in_timestamp = UINT64_MAX;
-      base_if->out_timestamp = UINT64_MAX;
-    }
-  }
-  return msg;
-}
-
-/**
- * Mark received message as processed and pass ownership of the slot back to the
- * sender.
- *
- * @param base_if  Base interface handle (connected).
- * @param msg      Pointer to the previously received message.
- */
-static inline void UbsimBaseIfInDone(
-    struct UbsimBaseIf *base_if,
-    volatile union UbsimProtoBaseMsg *msg) {
-  atomic_store_explicit(
-      (volatile _Atomic(uint8_t) *)&msg->header.own_type,
-      (uint8_t)((msg->header.own_type & ~UBSIM_PROTO_MSG_OWN_MASK) |
-                UBSIM_PROTO_MSG_OWN_PRO),
-      memory_order_release);
-}
-
-/**
- * Message timestamp of the next. Valid only after a poll failed because of a
- * future timestamp.
- *
- * @param base_if Base interface handle (connected).
- * @return Input timestamp.
- */
-static inline uint64_t UbsimBaseIfInTimestamp(
-    struct UbsimBaseIf *base_if) {
-  return base_if->in_timestamp;
-}
-
-/**
- * Check if incoming channel has been terminated by peer.
- *
- * @param base_if Base interface handle (connected).
- */
-static inline int UbsimBaseIfInTerminated(struct UbsimBaseIf *base_if) {
-  return base_if->in_terminated;
-}
-
-/**
- * Allocate a new message in the queue. Must be followed by a call to
- * `UbsimBaseIfOutSend`.
- *
- * @param base_if   Base interface handle (connected).
- * @param timestamp Current timestamp (in picoseconds).
- * @return Pointer to the message struct if successful, NULL otherwise.
- */
-static inline volatile union UbsimProtoBaseMsg *UbsimBaseIfOutAlloc(
-    struct UbsimBaseIf *base_if, uint64_t timestamp) {
-  volatile union UbsimProtoBaseMsg *msg =
-      (volatile union UbsimProtoBaseMsg *)(void *)((uint8_t *)
-                                                           base_if->out_queue +
-                                                       base_if->out_pos *
-                                                           base_if->out_elen);
-
-  uint8_t own_type = atomic_load_explicit(
-      (volatile _Atomic(uint8_t) *)&msg->header.own_type, memory_order_acquire);
-  if ((own_type & UBSIM_PROTO_MSG_OWN_MASK) !=
-      UBSIM_PROTO_MSG_OWN_PRO) {
-    return NULL;
-  }
-
-  msg->header.timestamp = timestamp + base_if->params.link_latency;
-  base_if->out_timestamp = timestamp;
-
-  base_if->out_pos = (base_if->out_pos + 1) % base_if->out_enum;
-  return msg;
-}
-
-/**
- * Send out a fully filled message. Sets the message type and ownership flag.
- * Also acts as a compiler barrier to avoid other writes to the message being
- * reordered after this.
- *
- * @param base_if  Base interface handle (connected).
- * @param msg      Pointer to the previously allocated and fully initialized
-                   message (other than the type.).
- * @param msg_type Message type to set (without ownership flag).
- */
-static inline void UbsimBaseIfOutSend(
-    struct UbsimBaseIf *base_if, volatile union UbsimProtoBaseMsg *msg,
-    uint8_t msg_type) {
-  atomic_store_explicit((volatile _Atomic(uint8_t) *)&msg->header.own_type,
-                        (uint8_t)(msg_type | UBSIM_PROTO_MSG_OWN_CON),
-                        memory_order_release);
-}
-
-/**
- * Send a synchronization dummy message if necessary.
- *
- * @param base_if   Base interface handle (connected).
- * @param timestamp Current timestamp (in picoseconds).
- * @return 0 if sync successfully sent or sync was unnecessary, -1 if a
- * necessary sync message could not be sent because the queue is full.
- */
-static inline int UbsimBaseIfOutSync(struct UbsimBaseIf *base_if,
-                                         uint64_t timestamp) {
-  if (!base_if->sync ||
-      (base_if->out_timestamp > 0 &&
-       timestamp - base_if->out_timestamp < base_if->params.sync_interval))
-    return 0;
-
-  volatile union UbsimProtoBaseMsg *msg =
-      UbsimBaseIfOutAlloc(base_if, timestamp);
-  if (!msg)
-    return -1;
-
-  UbsimBaseIfOutSend(base_if, msg, UBSIM_PROTO_MSG_TYPE_SYNC);
-  return 0;
-}
-
-/**
- * Timestamp when the next sync or data packet must be sent.
- *
- * @param base_if   Base interface handle (connected).
- * @return Timestamp. Undefined if synchronization is disabled.
- */
-static inline uint64_t UbsimBaseIfOutNextSync(
-    struct UbsimBaseIf *base_if) {
-  if (base_if->out_timestamp == UINT64_MAX)
-    return UINT64_MAX;
-  return base_if->out_timestamp + base_if->params.sync_interval;
-}
-
-/**
- * Retrieve maximal total message length for outgoing messages.
- *
- * @param base_if Base interface handle (connected).
- * @return Maximal message length in bytes.
- */
-static inline size_t UbsimBaseIfOutMsgLen(struct UbsimBaseIf *base_if) {
-  return base_if->out_elen;
-}
-
-/**
- * Check if synchronization is enabled for this connection.
- *
- * @param base_if Base interface handle (connected).
- * @return true if synchronized, false otherwise.
- */
-static inline bool UbsimBaseIfSyncEnabled(struct UbsimBaseIf *base_if) {
-  return base_if->sync;
-}
-
-#ifdef __cplusplus
-}
-#endif
+}  // namespace ubsim
 
 #endif  // UBSIM_BASE_IF_H_
