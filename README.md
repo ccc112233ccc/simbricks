@@ -12,7 +12,7 @@ make
 2. Launch the manager with your active Python virtual environment:
 
 ```sh
-python -m ubsim_manager ./sims/mem/topos/basicmem-memstim.json
+python -m ubsim_manager ./topos/basicmem-memstim.json
 ```
 
 The manager creates run-scoped state under `./tmp/ubsim-run-<timestamp>-<pid>`

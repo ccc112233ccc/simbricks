@@ -64,7 +64,7 @@ def resolve_path(base_dir: Path, raw_path: str) -> Path:
     return (base_dir / p).resolve()
 
 
-def prepare_channel(base_dir: Path, channel_cfg: Dict) -> ChannelInfo:
+def prepare_channel(base_dir: Path, run_dir: Path, channel_cfg: Dict) -> ChannelInfo:
     channel_type = channel_cfg["type"]
     options = channel_cfg.get("options", {})
     entries = int(options.get("entries", DEFAULT_ENTRIES))
@@ -74,7 +74,11 @@ def prepare_channel(base_dir: Path, channel_cfg: Dict) -> ChannelInfo:
     shm_size = 0
 
     if channel_type == "shm_ring":
-        shm_path = resolve_path(base_dir, options["shm_path"])
+        raw_shm_path = options["shm_path"]
+        if Path(raw_shm_path).is_absolute():
+            shm_path = Path(raw_shm_path)
+        else:
+            shm_path = (run_dir / raw_shm_path).resolve()
         shm_size = int(options.get("shm_size", entries * entry_size * 2))
     elif channel_type == "socket":
         shm_path = Path("-")
@@ -110,14 +114,14 @@ def parse_simulators(cfg: Dict) -> Dict[str, Simulator]:
     return simulators
 
 
-def build_ports(cfg: Dict, base_dir: Path) -> Dict[str, List[PortInfo]]:
+def build_ports(cfg: Dict, base_dir: Path, run_dir: Path) -> Dict[str, List[PortInfo]]:
     simulators = parse_simulators(cfg)
     ports_by_sim: Dict[str, List[PortInfo]] = {name: [] for name in simulators}
 
     for link in cfg.get("links", []):
         a = link["a"]
         b = link["b"]
-        channel_info = prepare_channel(base_dir, link["channel"])
+        channel_info = prepare_channel(base_dir, run_dir, link["channel"])
 
         def split_ref(ref: str) -> List[str]:
             sim_name, port_name = ref.split(".")
@@ -169,13 +173,14 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def run_simulators(cfg: Dict, ports_by_sim: Dict[str, List[PortInfo]]) -> int:
+def run_simulators(cfg: Dict, config_dir: Path) -> int:
     simulators = parse_simulators(cfg)
     tmp_base = repo_root() / "tmp"
     tmp_base.mkdir(parents=True, exist_ok=True)
     run_dir = tmp_base / f"ubsim-run-{int(time.time())}-{os.getpid()}"
     run_dir.mkdir(parents=True, exist_ok=True)
     logging.info("run directory: %s", run_dir)
+    ports_by_sim = build_ports(cfg, config_dir, run_dir)
 
     procs: List[subprocess.Popen] = []
     proc_logs: List[tuple] = []
@@ -260,8 +265,7 @@ def main() -> int:
     config_path = Path(args.topology).resolve()
     config_dir = config_path.parent
     cfg = load_config(config_path)
-    ports_by_sim = build_ports(cfg, config_dir)
-    return run_simulators(cfg, ports_by_sim)
+    return run_simulators(cfg, config_dir)
 
 
 if __name__ == "__main__":
