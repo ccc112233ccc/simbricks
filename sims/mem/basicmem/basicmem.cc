@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -20,6 +22,23 @@ void HandleSigint(int) { g_exiting = 1; }
 
 void HandleSigusr1(int) {
   std::fprintf(stderr, "main_time = %lu\n", g_current_ts);
+}
+
+std::string HexSnippet(const volatile uint8_t *data, size_t len,
+                        size_t max_len = 32) {
+  std::ostringstream out;
+  size_t count = (len < max_len) ? len : max_len;
+  out << std::hex << std::setfill('0');
+  for (size_t i = 0; i < count; i++) {
+    out << std::setw(2) << static_cast<int>(data[i]);
+    if (i + 1 < count) {
+      out << " ";
+    }
+  }
+  if (len > max_len) {
+    out << " ...";
+  }
+  return out.str();
 }
 
 volatile ubsim::MemM2H *AllocM2H(ubsim::MemIf *memif, uint64_t ts) {
@@ -49,24 +68,44 @@ void PollH2M(ubsim::MemIf *memif, uint64_t ts,
     case ubsim::kMemMsgRead: {
       uint64_t addr = msg->read.addr;
       uint64_t len = msg->read.len;
+      ubsim::LogDebug("basicmem",
+                      "recv read addr=" + std::to_string(addr) +
+                          " len=" + std::to_string(len));
       volatile ubsim::MemM2H *resp = AllocM2H(memif, ts);
       resp->readcomp.req_id = msg->read.req_id;
       std::memcpy((void *)resp->readcomp.data, &(*memory)[addr], len);
+      ubsim::LogDebug("basicmem",
+                      "send readcomp req=" +
+                          std::to_string(msg->read.req_id) + " data=" +
+                          HexSnippet(reinterpret_cast<const uint8_t *>(
+                                         (*memory).data() + addr),
+                                     len));
       ubsim::M2HOutSend(memif, resp, ubsim::kMemMsgReadComp);
       break;
     }
     case ubsim::kMemMsgWrite: {
       uint64_t addr = msg->write.addr;
       uint64_t len = msg->write.len;
+      ubsim::LogDebug("basicmem",
+                      "recv write addr=" + std::to_string(addr) +
+                          " len=" + std::to_string(len) + " data=" +
+                          HexSnippet(msg->write.data, len));
       std::memcpy(&(*memory)[addr], (const void *)msg->write.data, len);
       volatile ubsim::MemM2H *resp = AllocM2H(memif, ts);
       resp->writecomp.req_id = msg->write.req_id;
+      ubsim::LogDebug("basicmem",
+                      "send writecomp req=" +
+                          std::to_string(msg->write.req_id));
       ubsim::M2HOutSend(memif, resp, ubsim::kMemMsgWriteComp);
       break;
     }
     case ubsim::kMemMsgWritePosted: {
       uint64_t addr = msg->write.addr;
       uint64_t len = msg->write.len;
+      ubsim::LogDebug("basicmem",
+                      "recv posted write addr=" + std::to_string(addr) +
+                          " len=" + std::to_string(len) + " data=" +
+                          HexSnippet(msg->write.data, len));
       std::memcpy(&(*memory)[addr], (const void *)msg->write.data, len);
       break;
     }

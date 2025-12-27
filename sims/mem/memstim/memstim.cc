@@ -6,6 +6,8 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <iomanip>
+#include <sstream>
 
 #include "lib/ubsim/base/log.hpp"
 #include "lib/ubsim/base/manager.hpp"
@@ -21,6 +23,22 @@ void HandleSigint(int) { g_exiting = 1; }
 
 void HandleSigusr1(int) {
   std::fprintf(stderr, "main_time = %lu\n", g_current_ts);
+}
+
+std::string HexSnippet(const uint8_t *data, size_t len, size_t max_len = 32) {
+  std::ostringstream out;
+  size_t count = (len < max_len) ? len : max_len;
+  out << std::hex << std::setfill('0');
+  for (size_t i = 0; i < count; i++) {
+    out << std::setw(2) << static_cast<int>(data[i]);
+    if (i + 1 < count) {
+      out << " ";
+    }
+  }
+  if (len > max_len) {
+    out << " ...";
+  }
+  return out.str();
 }
 
 volatile ubsim::MemH2M *AllocH2M(ubsim::MemIf *memif, uint64_t ts) {
@@ -78,6 +96,11 @@ int WaitForCompletion(ubsim::MemIf *memif, uint64_t req_id,
           ubsim::M2HInDone(memif, msg);
           return -1;
         }
+        ubsim::LogDebug("memstim",
+                        "recv readcomp req=" + std::to_string(req_id) +
+                            " data=" +
+                            HexSnippet((const uint8_t *)msg->readcomp.data,
+                                       len));
         ubsim::M2HInDone(memif, msg);
         return 0;
       case ubsim::kMemMsgWriteComp:
@@ -92,6 +115,8 @@ int WaitForCompletion(ubsim::MemIf *memif, uint64_t req_id,
           ubsim::M2HInDone(memif, msg);
           return -1;
         }
+        ubsim::LogDebug("memstim",
+                        "recv writecomp req=" + std::to_string(req_id));
         ubsim::M2HInDone(memif, msg);
         return 0;
       case ubsim::kMsgSync:
@@ -204,6 +229,11 @@ int main(int argc, char *argv[]) {
     write_msg->write.len = len;
     std::memcpy((void *)write_msg->write.data, payload.data(), len);
 
+    ubsim::LogDebug("memstim",
+                    "send write req=" + std::to_string(write_msg->write.req_id) +
+                        " addr=" + std::to_string(addr) +
+                        " len=" + std::to_string(len) + " data=" +
+                        HexSnippet(payload.data(), len));
     ubsim::H2MOutSend(&memif, write_msg, ubsim::kMemMsgWrite);
 
     if (WaitForCompletion(&memif, write_msg->write.req_id,
@@ -220,6 +250,10 @@ int main(int argc, char *argv[]) {
     read_msg->read.addr = addr;
     read_msg->read.len = len;
 
+    ubsim::LogDebug("memstim",
+                    "send read req=" + std::to_string(read_msg->read.req_id) +
+                        " addr=" + std::to_string(addr) +
+                        " len=" + std::to_string(len));
     ubsim::H2MOutSend(&memif, read_msg, ubsim::kMemMsgRead);
 
     if (WaitForCompletion(&memif, read_msg->read.req_id,

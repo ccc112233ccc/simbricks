@@ -212,8 +212,11 @@ def run_simulators(cfg: Dict, ports_by_sim: Dict[str, List[PortInfo]]) -> int:
             stderr_path = run_dir / f"{sim.name}.stderr.log"
             cmd_path = run_dir / f"{sim.name}.cmd"
             cmd_line = " ".join([sim.exec_path] + sim.args)
-            cmd_path.write_text(cmd_line + "\n", encoding="utf-8")
-            logging.info("launching %s: %s", sim.name, cmd_line)
+            cmd_with_env = f"UBSIM_MANAGER_PORTS={port_file} {cmd_line}"
+            cmd_path.write_text(cmd_with_env + "\n", encoding="utf-8")
+            env_path = run_dir / f"{sim.name}.env"
+            env_path.write_text(f"UBSIM_MANAGER_PORTS={port_file}\n", encoding="utf-8")
+            logging.info("launching %s: %s", sim.name, cmd_with_env)
             stdout_handle = open(stdout_path, "w", encoding="utf-8")
             stderr_handle = open(stderr_path, "w", encoding="utf-8")
             proc = subprocess.Popen(
