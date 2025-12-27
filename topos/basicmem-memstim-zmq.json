@@ -18,11 +18,11 @@
       "a": "memstim.mem",
       "b": "basicmem.mem",
       "channel": {
-        "type": "mq",
+        "type": "zmq",
         "options": {
-          "mq_name": "ubsim-mem-mq",
-          "entries": 10,
-          "entry_size": 256
+          "zmq_name": "ubsim-mem-zmq",
+          "entries": 8192,
+          "entry_size": 8256
         }
       }
     }

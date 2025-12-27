@@ -203,8 +203,8 @@ int main(int argc, char *argv[]) {
   params.blocking_conn = true;
 
   ubsim::MemTransport::Mode mode = ubsim::MemTransport::Mode::kShm;
-  if (port.channel_type == "mq") {
-    mode = ubsim::MemTransport::Mode::kMq;
+  if (port.channel_type == "zmq") {
+    mode = ubsim::MemTransport::Mode::kZmq;
   }
   ubsim::MemTransport memif(mode);
   if (mode == ubsim::MemTransport::Mode::kShm) {
@@ -214,9 +214,10 @@ int main(int argc, char *argv[]) {
       return EXIT_FAILURE;
     }
   } else {
-    if (!memif.mq().Open(port.mq_in_name, port.mq_out_name,
-                         port.in_entry_size, port.in_entries, params)) {
-      ubsim::LogError("memstim", "failed to open MQ channels");
+    if (!memif.zmq().Open(port.zmq_in_endpoint, port.zmq_out_endpoint,
+                          port.zmq_in_bind, port.zmq_out_bind,
+                          port.in_entry_size, port.in_entries, params)) {
+      ubsim::LogError("memstim", "failed to open ZMQ channels");
       return EXIT_FAILURE;
     }
   }

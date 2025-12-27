@@ -22,28 +22,29 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef UBSIM_MEM_MQ_H_
-#define UBSIM_MEM_MQ_H_
+#ifndef UBSIM_MEM_ZMQ_H_
+#define UBSIM_MEM_ZMQ_H_
 
 #include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
 
-#include <mqueue.h>
+#include <zmq.h>
 
 #include <ubsim/base/if.h>
 #include <ubsim/mem/proto.h>
 
 namespace ubsim {
 
-class MqMemIf {
+class ZmqMemIf {
  public:
-  MqMemIf();
-  ~MqMemIf();
+  ZmqMemIf();
+  ~ZmqMemIf();
 
-  bool Open(const std::string &in_name, const std::string &out_name,
-            size_t entry_size, size_t depth, const BaseIfParams &params);
+  bool Open(const std::string &in_endpoint, const std::string &out_endpoint,
+            bool in_bind, bool out_bind, size_t entry_size, size_t depth,
+            const BaseIfParams &params);
   void Close();
 
   volatile UbsimProtoMemH2M *H2MOutAlloc(uint64_t ts);
@@ -67,9 +68,11 @@ class MqMemIf {
  private:
   bool Send(volatile UbsimProtoBaseMsg *msg, uint8_t type);
   volatile UbsimProtoBaseMsg *Receive();
+  bool InitSocket(void **socket, const std::string &endpoint, bool bind);
 
-  mqd_t in_queue_ = static_cast<mqd_t>(-1);
-  mqd_t out_queue_ = static_cast<mqd_t>(-1);
+  void *context_ = nullptr;
+  void *in_socket_ = nullptr;
+  void *out_socket_ = nullptr;
   size_t entry_size_ = 0;
   size_t depth_ = 0;
   BaseIfParams params_{};
@@ -80,4 +83,4 @@ class MqMemIf {
 
 }  // namespace ubsim
 
-#endif  // UBSIM_MEM_MQ_H_
+#endif  // UBSIM_MEM_ZMQ_H_

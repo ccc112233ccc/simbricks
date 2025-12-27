@@ -5,7 +5,7 @@
 #include <variant>
 
 #include <ubsim/mem/if.h>
-#include <ubsim/mem/mq.h>
+#include <ubsim/mem/zmq.h>
 
 namespace ubsim {
 
@@ -15,14 +15,14 @@ class MemTransport {
  public:
   enum class Mode {
     kShm,
-    kMq,
+    kZmq,
   };
 
   explicit MemTransport(Mode mode) : mode_(mode) {
     if (mode_ == Mode::kShm) {
       transport_.emplace<MemIf>();
     } else {
-      transport_.emplace<MqMemIf>();
+      transport_.emplace<ZmqMemIf>();
     }
   }
 
@@ -30,8 +30,8 @@ class MemTransport {
 
   MemIf &shm() { return std::get<MemIf>(transport_); }
   const MemIf &shm() const { return std::get<MemIf>(transport_); }
-  MqMemIf &mq() { return std::get<MqMemIf>(transport_); }
-  const MqMemIf &mq() const { return std::get<MqMemIf>(transport_); }
+  ZmqMemIf &zmq() { return std::get<ZmqMemIf>(transport_); }
+  const ZmqMemIf &zmq() const { return std::get<ZmqMemIf>(transport_); }
 
   volatile UbsimProtoMemH2M *H2MOutAlloc(uint64_t ts) {
     return std::visit(
@@ -103,7 +103,7 @@ class MemTransport {
 
  private:
   Mode mode_;
-  std::variant<MemIf, MqMemIf> transport_;
+  std::variant<MemIf, ZmqMemIf> transport_;
 };
 
 template <typename T>
