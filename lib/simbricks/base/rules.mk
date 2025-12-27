@@ -24,7 +24,7 @@ include mk/subdir_pre.mk
 
 lib_base := $(d)libbase.a
 
-OBJS := $(addprefix $(d),if.o)
+OBJS := $(addprefix $(d),if.o manager.o)
 
 libsimbricks_objs += $(OBJS)
 

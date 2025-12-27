@@ -28,9 +28,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <unistd.h>
 
+#include <simbricks/base/manager.h>
 #include <simbricks/mem/if.h>
 #include <simbricks/mem/proto.h>
 
@@ -50,42 +50,15 @@ static void sigusr1_handler(int dummy) {
   fprintf(stderr, "main_time = %lu\n", cur_ts);
 }
 
-bool MemifInit(struct SimbricksMemIf *memif, const char *shm_path,
-               struct SimbricksBaseIfParams *memParams) {
+bool MemifInit(struct SimbricksMemIf *memif,
+               struct SimbricksBaseIfParams *memParams,
+               const struct SimbricksManagerPort *port) {
   struct SimbricksBaseIf *membase = &memif->base;
   struct SimbricksBaseIfSHMPool pool_;
   memset(&pool_, 0, sizeof(pool_));
 
-  struct SimBricksBaseIfEstablishData ests[1];
-  struct SimbricksProtoMemHostIntro m_intro;
-  struct SimbricksProtoMemHostIntro h_intro;
-  unsigned n_bifs = 0;
-
-  memset(&m_intro, 0, sizeof(m_intro));
-  ests[n_bifs].base_if = membase;
-  ests[n_bifs].tx_intro = &m_intro;
-  ests[n_bifs].tx_intro_len = sizeof(m_intro);
-  ests[n_bifs].rx_intro = &h_intro;
-  ests[n_bifs].rx_intro_len = sizeof(h_intro);
-  n_bifs++;
-
-  if (SimbricksBaseIfInit(membase, memParams)) {
-    perror("Init: SimbricksBaseIfInit failed");
-  }
-
-  if (SimbricksBaseIfSHMPoolCreate(
-          &pool_, shm_path, SimbricksBaseIfSHMSize(&membase->params)) != 0) {
-    perror("MemifInit: SimbricksBaseIfSHMPoolCreate failed");
-    return false;
-  }
-
-  if (SimbricksBaseIfListen(membase, &pool_) != 0) {
-    perror("MemifInit: SimbricksBaseIfListen failed");
-    return false;
-  }
-
-  if (SimBricksBaseIfEstablish(ests, 1)) {
-    fprintf(stderr, "SimBricksBaseIfEstablish failed\n");
+  if (SimbricksManagerAttachBaseIf(membase, memParams, &pool_, port) != 0) {
+    fprintf(stderr, "MemifInit: attach to manager port failed\n");
     return false;
   }
 
@@ -188,34 +161,45 @@ int main(int argc, char *argv[]) {
 
   int sync_mem = 1;
   uint64_t next_ts = 0;
-  const char *shmPath;
   struct SimbricksBaseIfParams memParams;
   struct SimbricksMemIf memif;
-  const char *elf_file = NULL;
+  struct SimbricksManagerPort port;
 
   SimbricksMemIfDefaultParams(&memParams);
 
-  if (argc < 6 || argc > 11) {
+  if (argc < 4 || argc > 8) {
     fprintf(stderr,
-            "Usage: basicmem [SIZE] [BASE-ADDR] [ASID] [MEM-SOCKET] "
-            "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [MEM-LATENCY] [ELF]\n");
+            "Usage: basicmem [SIZE] [BASE-ADDR] [ASID] [SYNC-MODE] "
+            "[START-TICK] [SYNC-PERIOD] [MEM-LATENCY]\n");
     return -1;
   }
+  if (argc >= 5)
+    memParams.sync_mode = (enum SimbricksBaseIfSyncMode)strtoul(argv[4], NULL,
+                                                                0);
+  if (argc >= 6)
+    cur_ts = strtoull(argv[5], NULL, 0);
+  if (argc >= 7)
+    memParams.sync_interval = strtoull(argv[6], NULL, 0) * 1000ULL;
   if (argc >= 8)
-    cur_ts = strtoull(argv[7], NULL, 0);
-  if (argc >= 9)
-    memParams.sync_interval = strtoull(argv[8], NULL, 0) * 1000ULL;
-  if (argc >= 10)
-    memParams.link_latency = strtoull(argv[9], NULL, 0) * 1000ULL;
-  if (argc >= 11)
-    elf_file = argv[10];
+    memParams.link_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
 
   size = strtoull(argv[1], NULL, 0);
   base_addr = strtoull(argv[2], NULL, 0);
-  memParams.sock_path = argv[4];
-  shmPath = argv[5];
 
-  memParams.sync_mode = kSimbricksBaseIfSyncOptional;
+  if (SimbricksManagerGetPortFromEnv("mem", &port) != 0) {
+    fprintf(stderr, "failed to load manager port info\n");
+    return EXIT_FAILURE;
+  }
+  if (port.channel_type != kSimbricksManagerChannelShmRing) {
+    fprintf(stderr, "unsupported channel type for mem port\n");
+    return EXIT_FAILURE;
+  }
+
+  if (port.channel_type != kSimbricksManagerChannelShmRing) {
+    fprintf(stderr, "unsupported channel type for mem port\n");
+    return EXIT_FAILURE;
+  }
+
   memParams.blocking_conn = true;
 
   mem_array = (uint8_t *)calloc(size, sizeof(uint8_t));
@@ -223,7 +207,7 @@ int main(int argc, char *argv[]) {
     perror("no array allocated\n");
   }
 
-  if (!MemifInit(&memif, shmPath, &memParams)) {
+  if (!MemifInit(&memif, &memParams, &port)) {
     return EXIT_FAILURE;
   }
 

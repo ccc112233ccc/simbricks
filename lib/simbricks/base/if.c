@@ -144,7 +144,7 @@ int SimbricksBaseIfSHMPoolMap(struct SimbricksBaseIfSHMPool *pool,
                               const char *path) {
   int fd;
 
-  if ((fd = open(path, O_RDWR, 0666) == -1)) {
+  if ((fd = open(path, O_RDWR, 0666)) == -1) {
     perror("SimbricksBaseIfSHMPoolMap: open failed");
     return -1;
   }
@@ -202,6 +202,32 @@ int SimbricksBaseIfInit(struct SimbricksBaseIf *base_if,
   }
   memset(base_if, 0, sizeof(*base_if));
   base_if->params = *params;
+  return 0;
+}
+
+int SimbricksBaseIfManagerSetup(struct SimbricksBaseIf *base_if,
+                                struct SimbricksBaseIfSHMPool *pool,
+                                size_t in_offset, size_t out_offset,
+                                size_t in_entries, size_t out_entries,
+                                size_t in_entry_size,
+                                size_t out_entry_size) {
+  base_if->shm = pool;
+  base_if->in_queue = pool->base + in_offset;
+  base_if->in_pos = 0;
+  base_if->in_elen = in_entry_size;
+  base_if->in_enum = in_entries;
+  base_if->in_timestamp = 0;
+
+  base_if->out_queue = pool->base + out_offset;
+  base_if->out_pos = 0;
+  base_if->out_elen = out_entry_size;
+  base_if->out_enum = out_entries;
+  base_if->out_timestamp = 0;
+
+  base_if->conn_state = kConnOpen;
+  base_if->listener = false;
+  base_if->conn_fd = -1;
+  base_if->listen_fd = -1;
   return 0;
 }
 

@@ -30,6 +30,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <simbricks/base/manager.h>
 #include <simbricks/mem/if.h>
 #include <simbricks/mem/proto.h>
 
@@ -153,34 +154,14 @@ static size_t MaxWritePayload(struct SimbricksMemIf *memif) {
 }
 
 bool MemifInit(struct SimbricksMemIf *memif,
-               struct SimbricksBaseIfParams *memParams) {
+               struct SimbricksBaseIfParams *memParams,
+               const struct SimbricksManagerPort *port) {
   struct SimbricksBaseIf *membase = &memif->base;
-  struct SimBricksBaseIfEstablishData ests[1];
-  struct SimbricksProtoMemHostIntro h_intro;
-  struct SimbricksProtoMemMemIntro m_intro;
-  unsigned n_bifs = 0;
+  struct SimbricksBaseIfSHMPool pool_;
+  memset(&pool_, 0, sizeof(pool_));
 
-  memset(&h_intro, 0, sizeof(h_intro));
-  memset(&m_intro, 0, sizeof(m_intro));
-
-  ests[n_bifs].base_if = membase;
-  ests[n_bifs].tx_intro = &h_intro;
-  ests[n_bifs].tx_intro_len = sizeof(h_intro);
-  ests[n_bifs].rx_intro = &m_intro;
-  ests[n_bifs].rx_intro_len = sizeof(m_intro);
-  n_bifs++;
-
-  if (SimbricksBaseIfInit(membase, memParams)) {
-    perror("Init: SimbricksBaseIfInit failed");
-  }
-
-  if (SimbricksBaseIfConnect(membase) != 0) {
-    perror("MemifInit: SimbricksBaseIfConnect failed");
-    return false;
-  }
-
-  if (SimBricksBaseIfEstablish(ests, 1)) {
-    fprintf(stderr, "SimBricksBaseIfEstablish failed\n");
+  if (SimbricksManagerAttachBaseIf(membase, memParams, &pool_, port) != 0) {
+    fprintf(stderr, "MemifInit: attach to manager port failed\n");
     return false;
   }
 
@@ -199,41 +180,50 @@ int main(int argc, char *argv[]) {
   uint64_t num_ops;
   uint16_t len;
   uint64_t req_id = 1;
+  struct SimbricksManagerPort port;
 
   SimbricksMemIfDefaultParams(&memParams);
 
-  if (argc < 6 || argc > 10) {
+  if (argc < 5 || argc > 9) {
     fprintf(stderr,
-            "Usage: memstim [BASE-ADDR] [ASID] [MEM-SOCKET] [OPS] [LEN] "
-            "[SYNC-MODE] [START-TICK] [SYNC-PERIOD] [MEM-LATENCY]\n");
+            "Usage: memstim [BASE-ADDR] [ASID] [OPS] [LEN] [SYNC-MODE] "
+            "[START-TICK] [SYNC-PERIOD] [MEM-LATENCY]\n");
     return -1;
   }
 
   base_addr = strtoull(argv[1], NULL, 0);
   as_id = strtoull(argv[2], NULL, 0);
-  memParams.sock_path = argv[3];
-  num_ops = strtoull(argv[4], NULL, 0);
-  len = (uint16_t)strtoul(argv[5], NULL, 0);
+  num_ops = strtoull(argv[3], NULL, 0);
+  len = (uint16_t)strtoul(argv[4], NULL, 0);
 
-  if (argc >= 7) {
-    memParams.sync_mode = (enum SimbricksBaseIfSyncMode)strtoul(argv[6], NULL, 0);
+  if (argc >= 6) {
+    memParams.sync_mode =
+        (enum SimbricksBaseIfSyncMode)strtoul(argv[5], NULL, 0);
   } else {
     memParams.sync_mode = kSimbricksBaseIfSyncOptional;
   }
 
+  if (argc >= 7) {
+    cur_ts = strtoull(argv[6], NULL, 0);
+  }
   if (argc >= 8) {
-    cur_ts = strtoull(argv[7], NULL, 0);
+    memParams.sync_interval = strtoull(argv[7], NULL, 0) * 1000ULL;
   }
   if (argc >= 9) {
-    memParams.sync_interval = strtoull(argv[8], NULL, 0) * 1000ULL;
-  }
-  if (argc >= 10) {
-    memParams.link_latency = strtoull(argv[9], NULL, 0) * 1000ULL;
+    memParams.link_latency = strtoull(argv[8], NULL, 0) * 1000ULL;
   }
 
+  if (SimbricksManagerGetPortFromEnv("mem", &port) != 0) {
+    fprintf(stderr, "failed to load manager port info\n");
+    return EXIT_FAILURE;
+  }
+  if (port.channel_type != kSimbricksManagerChannelShmRing) {
+    fprintf(stderr, "unsupported channel type for mem port\n");
+    return EXIT_FAILURE;
+  }
   memParams.blocking_conn = true;
 
-  if (!MemifInit(&memif, &memParams)) {
+  if (!MemifInit(&memif, &memParams, &port)) {
     return EXIT_FAILURE;
   }
 
