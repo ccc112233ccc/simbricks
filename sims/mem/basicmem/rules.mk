@@ -27,7 +27,7 @@ bin_basicmem := $(d)basicmem
 OBJS := $(d)basicmem.o
 # LDLIBS := -lelf
 
-$(bin_basicmem): $(OBJS) $(lib_mem) $(lib_base)
+$(bin_basicmem): $(OBJS) $(lib_mem) $(lib_base) $(lib_ubsim)
 
 CLEAN := $(bin_basicmem) $(OBJS)
 ALL := $(bin_basicmem)

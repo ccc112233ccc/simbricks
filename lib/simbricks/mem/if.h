@@ -32,6 +32,10 @@
 #include <simbricks/base/if.h>
 #include <simbricks/mem/proto.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void SimbricksMemIfDefaultParams(struct SimbricksBaseIfParams *params);
 
 struct SimbricksMemIf {
@@ -43,5 +47,9 @@ SIMBRICKS_BASEIF_GENERIC(SimbricksMemIfH2M, SimbricksProtoMemH2M,
                          SimbricksMemIf);
 SIMBRICKS_BASEIF_GENERIC(SimbricksMemIfM2H, SimbricksProtoMemM2H,
                          SimbricksMemIf);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // SIMBRICKS_MEM_IF_H_

@@ -26,7 +26,7 @@ bin_memstim := $(d)memstim
 
 OBJS := $(d)memstim.o
 
-$(bin_memstim): $(OBJS) $(lib_mem) $(lib_base)
+$(bin_memstim): $(OBJS) $(lib_mem) $(lib_base) $(lib_ubsim)
 
 CLEAN := $(bin_memstim) $(OBJS)
 ALL := $(bin_memstim)

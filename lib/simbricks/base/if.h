@@ -38,6 +38,10 @@
 
 #include <simbricks/base/proto.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Handle for a SHM pool. Treat as opaque. */
 struct SimbricksBaseIfSHMPool {
   const char *path;
@@ -138,6 +142,12 @@ size_t SimbricksBaseIfSHMSize(struct SimbricksBaseIfParams *params);
 
 int SimbricksBaseIfInit(struct SimbricksBaseIf *base_if,
                         struct SimbricksBaseIfParams *params);
+int SimbricksBaseIfManagerSetup(struct SimbricksBaseIf *base_if,
+                                struct SimbricksBaseIfSHMPool *pool,
+                                size_t in_offset, size_t out_offset,
+                                size_t in_entries, size_t out_entries,
+                                size_t in_entry_size,
+                                size_t out_entry_size);
 
 /** Create listening base interface. Note this does not wait for a connector. */
 int SimbricksBaseIfListen(struct SimbricksBaseIf *base_if,
@@ -388,5 +398,9 @@ static inline size_t SimbricksBaseIfOutMsgLen(struct SimbricksBaseIf *base_if) {
 static inline bool SimbricksBaseIfSyncEnabled(struct SimbricksBaseIf *base_if) {
   return base_if->sync;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // SIMBRICKS_BASE_IF_H_

@@ -1,10 +1,28 @@
+# UBSIM Memory Demo
 
-type make to build 
+## Build
 
-start a basic mem:
+```sh
+make
+```
 
-./sims/mem/basicmem/basicmem 1024 0 0 mem.socket mem.shm 1 0 10 10
+## Run the memory demo via the manager
 
-above commend will create a socket and a share memory to listen and change messages
+1. Build the binaries with `make`.
+2. Launch the manager with your active Python virtual environment:
 
-dont forget delete socket and share memory after run the simualtion.
+```sh
+python -m ubsim_manager ./topos/basicmem-memstim.json
+```
+
+The manager creates run-scoped state under `./tmp/ubsim-run-<timestamp>-<pid>`
+inside the repository root and keeps it for post-run inspection.
+
+## Notes
+
+* The manager provisions the shared memory queues and passes connection
+  metadata to each simulator via `UBSIM_MANAGER_PORTS`.
+* `basicmem` and `memstim` now attach to manager-created channels directly
+  without any listener/connecter branching.
+* Each run directory stores per-simulator command lines (`*.cmd`) and logs
+  (`*.stdout.log`/`*.stderr.log`) so you can replay runs without the manager.
