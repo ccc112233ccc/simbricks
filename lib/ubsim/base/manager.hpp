@@ -12,6 +12,8 @@ struct ManagerPort {
   std::string name;
   std::string channel_type;
   std::string shm_path;
+  std::string mq_in_name;
+  std::string mq_out_name;
   size_t in_offset = 0;
   size_t out_offset = 0;
   size_t in_entries = 0;

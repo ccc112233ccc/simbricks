@@ -27,6 +27,8 @@ class ChannelInfo:
     shm_size: int
     entries: int
     entry_size: int
+    mq_a_to_b: str
+    mq_b_to_a: str
 
 
 @dataclass
@@ -38,6 +40,8 @@ class PortInfo:
     out_offset: int
     entries: int
     entry_size: int
+    mq_in: str
+    mq_out: str
 
 
 @dataclass
@@ -64,7 +68,9 @@ def resolve_path(base_dir: Path, raw_path: str) -> Path:
     return (base_dir / p).resolve()
 
 
-def prepare_channel(base_dir: Path, run_dir: Path, channel_cfg: Dict) -> ChannelInfo:
+def prepare_channel(
+    base_dir: Path, run_dir: Path, channel_cfg: Dict, link_id: str
+) -> ChannelInfo:
     channel_type = channel_cfg["type"]
     options = channel_cfg.get("options", {})
     entries = int(options.get("entries", DEFAULT_ENTRIES))
@@ -72,6 +78,8 @@ def prepare_channel(base_dir: Path, run_dir: Path, channel_cfg: Dict) -> Channel
 
     shm_path = Path("-")
     shm_size = 0
+    mq_a_to_b = ""
+    mq_b_to_a = ""
 
     if channel_type == "shm_ring":
         raw_shm_path = options["shm_path"]
@@ -80,6 +88,12 @@ def prepare_channel(base_dir: Path, run_dir: Path, channel_cfg: Dict) -> Channel
         else:
             shm_path = (run_dir / raw_shm_path).resolve()
         shm_size = int(options.get("shm_size", entries * entry_size * 2))
+    elif channel_type == "mq":
+        base_name = str(options.get("mq_name", f"ubsim-{run_dir.name}-{link_id}"))
+        if not base_name.startswith("/"):
+            base_name = f"/{base_name}"
+        mq_a_to_b = f"{base_name}-a2b"
+        mq_b_to_a = f"{base_name}-b2a"
     elif channel_type == "socket":
         shm_path = Path("-")
     else:
@@ -98,6 +112,8 @@ def prepare_channel(base_dir: Path, run_dir: Path, channel_cfg: Dict) -> Channel
         shm_size=shm_size,
         entries=entries,
         entry_size=entry_size,
+        mq_a_to_b=mq_a_to_b,
+        mq_b_to_a=mq_b_to_a,
     )
 
 
@@ -118,10 +134,11 @@ def build_ports(cfg: Dict, base_dir: Path, run_dir: Path) -> Dict[str, List[Port
     simulators = parse_simulators(cfg)
     ports_by_sim: Dict[str, List[PortInfo]] = {name: [] for name in simulators}
 
-    for link in cfg.get("links", []):
+    for idx, link in enumerate(cfg.get("links", [])):
         a = link["a"]
         b = link["b"]
-        channel_info = prepare_channel(base_dir, run_dir, link["channel"])
+        link_id = f"link-{idx}"
+        channel_info = prepare_channel(base_dir, run_dir, link["channel"], link_id)
 
         def split_ref(ref: str) -> List[str]:
             sim_name, port_name = ref.split(".")
@@ -140,6 +157,8 @@ def build_ports(cfg: Dict, base_dir: Path, run_dir: Path) -> Dict[str, List[Port
                 in_offset=queue_size,
                 entries=channel_info.entries,
                 entry_size=channel_info.entry_size,
+                mq_in=channel_info.mq_b_to_a,
+                mq_out=channel_info.mq_a_to_b,
             )
         )
         ports_by_sim[b_sim].append(
@@ -151,6 +170,8 @@ def build_ports(cfg: Dict, base_dir: Path, run_dir: Path) -> Dict[str, List[Port
                 in_offset=0,
                 entries=channel_info.entries,
                 entry_size=channel_info.entry_size,
+                mq_in=channel_info.mq_a_to_b,
+                mq_out=channel_info.mq_b_to_a,
             )
         )
 
@@ -162,11 +183,14 @@ def write_port_file(path: Path, ports: List[PortInfo]) -> None:
         handle.write("# UBSIM manager ports v1\n")
         for port in ports:
             shm_path = port.shm_path if port.shm_path else "-"
-            handle.write(
+            line = (
                 f"{port.name} {port.channel_type} {shm_path} {port.in_offset} "
                 f"{port.entries} {port.entry_size} {port.out_offset} "
-                f"{port.entries} {port.entry_size}\n"
+                f"{port.entries} {port.entry_size}"
             )
+            if port.channel_type == "mq":
+                line = f"{line} {port.mq_in} {port.mq_out}"
+            handle.write(f"{line}\n")
 
 
 def repo_root() -> Path:
