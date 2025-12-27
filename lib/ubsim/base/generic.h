@@ -22,85 +22,85 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_BASE_GENERIC_H_
-#define SIMBRICKS_BASE_GENERIC_H_
+#ifndef UBSIM_BASE_GENERIC_H_
+#define UBSIM_BASE_GENERIC_H_
 
-#include <simbricks/base/if.h>
+#include <ubsim/base/if.h>
 
 /**
  * Generates static inline functions specialized for message types of a specific
- * SimBricks protocol. These are thin wrappers around the baseif functions but
+ * Ubsim protocol. These are thin wrappers around the baseif functions but
  * insert appropriate casts.
  *
  * Generates the following function with the specified prefix:
- *  - In: prefixInPeek (wraps `SimbricksBaseIfInPeek`)
- *  - In: prefixInPoll (wraps `SimbricksBaseIfInPoll`)
- *  - In: prefixInType (wraps `SimbricksBaseIfInType`)
- *  - In: prefixInDone (wraps `SimbricksBaseIfInDone`)
- *  - In: prefixInTimestamp (wraps `SimbricksBaseIfInTimestamp`)
- *  - Out: prefixOutAlloc (wraps `SimbricksBaseIfOutAlloc`)
- *  - Out: prefixOutSend (wraps `SimbricksBaseIfOutSend`)
- *  - Out: prefixOutSync (wraps `SimbricksBaseIfOutSync`)
- *  - Out: prefixOutNextSync (wraps `SimbricksBaseIfOutNextSync`)
- *  - Out: prefixOutMsgLen (wraps `SimBricksBaseIfOutMsgLen`)
+ *  - In: prefixInPeek (wraps `UbsimBaseIfInPeek`)
+ *  - In: prefixInPoll (wraps `UbsimBaseIfInPoll`)
+ *  - In: prefixInType (wraps `UbsimBaseIfInType`)
+ *  - In: prefixInDone (wraps `UbsimBaseIfInDone`)
+ *  - In: prefixInTimestamp (wraps `UbsimBaseIfInTimestamp`)
+ *  - Out: prefixOutAlloc (wraps `UbsimBaseIfOutAlloc`)
+ *  - Out: prefixOutSend (wraps `UbsimBaseIfOutSend`)
+ *  - Out: prefixOutSync (wraps `UbsimBaseIfOutSync`)
+ *  - Out: prefixOutNextSync (wraps `UbsimBaseIfOutNextSync`)
+ *  - Out: prefixOutMsgLen (wraps `UbsimBaseIfOutMsgLen`)
  *
  * @param prefix    Name prefix for all the functions
  * @param msg_union Union name for the message type of the protocol. (not
  *                  including the "union" keyword).
  * @param if_struct Interfacing struct, (member base must be
- *                  `struct SimBricksBaseIf`).
+ *                  `struct UbsimBaseIf`).
  */
-#define SIMBRICKS_BASEIF_GENERIC(prefix, msg_union, if_struct)                 \
+#define UBSIM_BASEIF_GENERIC(prefix, msg_union, if_struct)                 \
                                                                                \
   static inline volatile union msg_union *prefix##InPeek(                      \
       struct if_struct *base_if, uint64_t ts) {                                \
-    return (volatile union msg_union *)SimbricksBaseIfInPeek(&base_if->base,   \
+    return (volatile union msg_union *)UbsimBaseIfInPeek(&base_if->base,   \
                                                              ts);              \
   }                                                                            \
                                                                                \
   static inline volatile union msg_union *prefix##InPoll(                      \
       struct if_struct *base_if, uint64_t ts) {                                \
-    return (volatile union msg_union *)SimbricksBaseIfInPoll(&base_if->base,   \
+    return (volatile union msg_union *)UbsimBaseIfInPoll(&base_if->base,   \
                                                              ts);              \
   }                                                                            \
                                                                                \
   static inline uint8_t prefix##InType(struct if_struct *base_if,              \
                                        volatile union msg_union *msg) {        \
-    return SimbricksBaseIfInType(&base_if->base, &msg->base);                  \
+    return UbsimBaseIfInType(&base_if->base, &msg->base);                  \
   }                                                                            \
                                                                                \
   static inline void prefix##InDone(struct if_struct *base_if,                 \
                                     volatile union msg_union *msg) {           \
-    SimbricksBaseIfInDone(&base_if->base, &msg->base);                         \
+    UbsimBaseIfInDone(&base_if->base, &msg->base);                         \
   }                                                                            \
                                                                                \
   static inline uint64_t prefix##InTimestamp(struct if_struct *base_if) {      \
-    return SimbricksBaseIfInTimestamp(&base_if->base);                         \
+    return UbsimBaseIfInTimestamp(&base_if->base);                         \
   }                                                                            \
                                                                                \
   static inline volatile union msg_union *prefix##OutAlloc(                    \
       struct if_struct *base_if, uint64_t timestamp) {                         \
-    return (volatile union msg_union *)SimbricksBaseIfOutAlloc(&base_if->base, \
+    return (volatile union msg_union *)UbsimBaseIfOutAlloc(&base_if->base, \
                                                                timestamp);     \
   }                                                                            \
                                                                                \
   static inline void prefix##OutSend(struct if_struct *base_if,                \
                                      volatile union msg_union *msg,            \
                                      uint8_t msg_type) {                       \
-    SimbricksBaseIfOutSend(&base_if->base, &msg->base, msg_type);              \
+    UbsimBaseIfOutSend(&base_if->base, &msg->base, msg_type);              \
   }                                                                            \
                                                                                \
   static inline int prefix##OutSync(struct if_struct *base_if,                 \
                                     uint64_t timestamp) {                      \
-    return SimbricksBaseIfOutSync(&base_if->base, timestamp);                  \
+    return UbsimBaseIfOutSync(&base_if->base, timestamp);                  \
   }                                                                            \
                                                                                \
   static inline uint64_t prefix##OutNextSync(struct if_struct *base_if) {      \
-    return SimbricksBaseIfOutNextSync(&base_if->base);                         \
+    return UbsimBaseIfOutNextSync(&base_if->base);                         \
   }                                                                            \
                                                                                \
   static inline size_t prefix##OutMsgLen(struct if_struct *base_if) {          \
-    return SimbricksBaseIfOutMsgLen(&base_if->base);                           \
+    return UbsimBaseIfOutMsgLen(&base_if->base);                           \
   }
 
-#endif  // SIMBRICKS_BASE_GENERIC_H_
+#endif  // UBSIM_BASE_GENERIC_H_

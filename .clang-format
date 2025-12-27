@@ -10,7 +10,7 @@ ColumnLimit: 80
 ForEachMacros: ['list_for_every_entry','list_for_every_entry_safe']
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex:           '^<simbricks/.*'
+  - Regex:           '^<ubsim/.*'
     Priority:        3
     SortPriority:    0
   - Regex:           '^<.*\.h>'

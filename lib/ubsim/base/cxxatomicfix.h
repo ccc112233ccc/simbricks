@@ -22,11 +22,11 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_BASE_CXXATOMICFIX_H_
-#define SIMBRICKS_BASE_CXXATOMICFIX_H_
+#ifndef UBSIM_BASE_CXXATOMICFIX_H_
+#define UBSIM_BASE_CXXATOMICFIX_H_
 
 /**
- * FIXME: This is a worklaround till we fix all simbricks headers to be
+ * FIXME: This is a worklaround till we fix all ubsim headers to be
  * compatible with C++, elliminating the need for extern "C", making it possible
  * to include this in the generic header where we use the atomics.
  *
@@ -40,4 +40,4 @@ using std::atomic_store_explicit;
 using std::memory_order_acquire;
 using std::memory_order_release;
 
-#endif  // SIMBRICKS_BASE_CXXATOMICFIX_H_
+#endif  // UBSIM_BASE_CXXATOMICFIX_H_

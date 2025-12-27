@@ -71,7 +71,7 @@ links:
     channel:
       type: unix_socket
       options:
-        path: /tmp/simbricks/nic0-host0.sock
+        path: /tmp/ubsim/nic0-host0.sock
 ```
 
 ### 配置要点
@@ -180,7 +180,7 @@ sims/mem/manager/
 
 ### 最小实现范围
 
-1. **新增一个 Manager 可执行程序**（位置可由实现决定，建议放在 `sims/mem/manager` 或 `lib/simbricks/manager`）。
+1. **新增一个 Manager 可执行程序**（位置可由实现决定，建议放在 `sims/mem/manager` 或 `lib/ubsim/manager`）。
 2. **新增拓扑配置文件**（例如 `sims/mem/topos/basicmem-memstim.yaml`），描述：
    - 两个仿真器：`basicmem` 与 `memstim`。
    - 一个端口连接关系：`memstim.mem` ↔ `basicmem.mem`。

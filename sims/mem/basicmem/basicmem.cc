@@ -140,12 +140,12 @@ int main(int argc, char *argv[]) {
                   "starting with size=" + std::to_string(size) +
                       " base_addr=" + std::to_string(base_addr));
 
-  SimbricksBaseIfParams params;
+  UbsimBaseIfParams params;
   ubsim::DefaultMemParams(&params);
 
   if (argc >= 5) {
     params.sync_mode =
-        static_cast<SimbricksBaseIfSyncMode>(std::strtoul(argv[4], nullptr, 0));
+        static_cast<UbsimBaseIfSyncMode>(std::strtoul(argv[4], nullptr, 0));
   }
   if (argc >= 6) {
     g_current_ts = std::strtoull(argv[5], nullptr, 0);

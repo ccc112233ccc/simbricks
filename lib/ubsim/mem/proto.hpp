@@ -3,23 +3,23 @@
 
 #include <cstdint>
 
-#include <simbricks/mem/proto.h>
+#include <ubsim/mem/proto.h>
 
 namespace ubsim {
 
-using MemH2M = SimbricksProtoMemH2M;
-using MemM2H = SimbricksProtoMemM2H;
-using MemH2MRead = SimbricksProtoMemH2MRead;
-using MemH2MWrite = SimbricksProtoMemH2MWrite;
-using MemM2HReadComp = SimbricksProtoMemM2HReadcomp;
-using MemM2HWriteComp = SimbricksProtoMemM2HWritecomp;
+using MemH2M = UbsimProtoMemH2M;
+using MemM2H = UbsimProtoMemM2H;
+using MemH2MRead = UbsimProtoMemH2MRead;
+using MemH2MWrite = UbsimProtoMemH2MWrite;
+using MemM2HReadComp = UbsimProtoMemM2HReadcomp;
+using MemM2HWriteComp = UbsimProtoMemM2HWritecomp;
 
-constexpr uint8_t kMemMsgRead = SIMBRICKS_PROTO_MEM_H2M_MSG_READ;
-constexpr uint8_t kMemMsgWrite = SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE;
-constexpr uint8_t kMemMsgWritePosted = SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE_POSTED;
-constexpr uint8_t kMemMsgReadComp = SIMBRICKS_PROTO_MEM_M2H_MSG_READCOMP;
-constexpr uint8_t kMemMsgWriteComp = SIMBRICKS_PROTO_MEM_M2H_MSG_WRITECOMP;
-constexpr uint8_t kMsgSync = SIMBRICKS_PROTO_MSG_TYPE_SYNC;
+constexpr uint8_t kMemMsgRead = UBSIM_PROTO_MEM_H2M_MSG_READ;
+constexpr uint8_t kMemMsgWrite = UBSIM_PROTO_MEM_H2M_MSG_WRITE;
+constexpr uint8_t kMemMsgWritePosted = UBSIM_PROTO_MEM_H2M_MSG_WRITE_POSTED;
+constexpr uint8_t kMemMsgReadComp = UBSIM_PROTO_MEM_M2H_MSG_READCOMP;
+constexpr uint8_t kMemMsgWriteComp = UBSIM_PROTO_MEM_M2H_MSG_WRITECOMP;
+constexpr uint8_t kMsgSync = UBSIM_PROTO_MSG_TYPE_SYNC;
 
 }  // namespace ubsim
 

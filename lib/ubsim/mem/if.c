@@ -22,34 +22,12 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_MEM_IF_H_
-#define SIMBRICKS_MEM_IF_H_
+#include "lib/ubsim/mem/if.h"
 
-#include <stddef.h>
-#include <stdint.h>
-
-#include <simbricks/base/generic.h>
-#include <simbricks/base/if.h>
-#include <simbricks/mem/proto.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void SimbricksMemIfDefaultParams(struct SimbricksBaseIfParams *params);
-
-struct SimbricksMemIf {
-  struct SimbricksBaseIf base;
-};
-
-/** Generate queue access functions for both directions */
-SIMBRICKS_BASEIF_GENERIC(SimbricksMemIfH2M, SimbricksProtoMemH2M,
-                         SimbricksMemIf);
-SIMBRICKS_BASEIF_GENERIC(SimbricksMemIfM2H, SimbricksProtoMemM2H,
-                         SimbricksMemIf);
-
-#ifdef __cplusplus
+void UbsimMemIfDefaultParams(struct UbsimBaseIfParams *params) {
+  UbsimBaseIfDefaultParams(params);
+  params->upper_layer_proto = UBSIM_PROTO_ID_MEM;
+  // fit DMA writes with size 8192
+  params->in_entries_size = params->out_entries_size =
+      8192 + sizeof(union UbsimProtoMemH2M);
 }
-#endif
-
-#endif  // SIMBRICKS_MEM_IF_H_

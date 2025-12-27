@@ -22,12 +22,12 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_BASE_IF_H_
-#define SIMBRICKS_BASE_IF_H_
+#ifndef UBSIM_BASE_IF_H_
+#define UBSIM_BASE_IF_H_
 
 #ifdef __cplusplus
 // FIXME
-#include <simbricks/base/cxxatomicfix.h>
+#include <ubsim/base/cxxatomicfix.h>
 #else
 #include <stdatomic.h>
 #endif
@@ -36,14 +36,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <simbricks/base/proto.h>
+#include <ubsim/base/proto.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /** Handle for a SHM pool. Treat as opaque. */
-struct SimbricksBaseIfSHMPool {
+struct UbsimBaseIfSHMPool {
   const char *path;
   int fd;
   void *base;
@@ -51,17 +51,17 @@ struct SimbricksBaseIfSHMPool {
   size_t pos;
 };
 
-enum SimbricksBaseIfSyncMode {
+enum UbsimBaseIfSyncMode {
   /** No synchronization enabled. */
-  kSimbricksBaseIfSyncDisabled,
+  kUbsimBaseIfSyncDisabled,
   /** Synchronization enabled if both peers request it. */
-  kSimbricksBaseIfSyncOptional,
+  kUbsimBaseIfSyncOptional,
   /** Enable synchronization and error if not both support it. */
-  kSimbricksBaseIfSyncRequired,
+  kUbsimBaseIfSyncRequired,
 };
 
-/** Parameters for a SimBricks interface */
-struct SimbricksBaseIfParams {
+/** Parameters for a Ubsim interface */
+struct UbsimBaseIfParams {
   /** Link latency/propagation delay [picoseconds] */
   uint64_t link_latency;
   /** Maximum gap between sync messages [picoseconds] */
@@ -69,7 +69,7 @@ struct SimbricksBaseIfParams {
   /** Unix socket path to listen on/connect to */
   const char *sock_path;
   /** Synchronization mode: disabled, optional, required */
-  enum SimbricksBaseIfSyncMode sync_mode;
+  enum UbsimBaseIfSyncMode sync_mode;
 
   /** for connecters and listeners choose blocking vs. non-blocking. */
   bool blocking_conn;
@@ -86,8 +86,8 @@ struct SimbricksBaseIfParams {
   uint64_t upper_layer_proto;
 };
 
-/** Handle for a SimBricks base interface. Treat as opaque. */
-struct SimbricksBaseIf {
+/** Handle for a Ubsim base interface. Treat as opaque. */
+struct UbsimBaseIf {
   void *in_queue;
   size_t in_pos;
   size_t in_elen;
@@ -104,15 +104,15 @@ struct SimbricksBaseIf {
 
   int conn_state;
   int sync;
-  struct SimbricksBaseIfParams params;
-  struct SimbricksBaseIfSHMPool *shm;
+  struct UbsimBaseIfParams params;
+  struct UbsimBaseIfSHMPool *shm;
   int listen_fd;
   int conn_fd;
   bool listener;
 };
 
-struct SimBricksBaseIfEstablishData {
-  struct SimbricksBaseIf *base_if;
+struct UbsimBaseIfEstablishData {
+  struct UbsimBaseIf *base_if;
 
   const void *tx_intro;
   size_t tx_intro_len;
@@ -122,53 +122,53 @@ struct SimBricksBaseIfEstablishData {
 };
 
 /** Create and map a new shared memory pool with the specified path and size. */
-int SimbricksBaseIfSHMPoolCreate(struct SimbricksBaseIfSHMPool *pool,
+int UbsimBaseIfSHMPoolCreate(struct UbsimBaseIfSHMPool *pool,
                                  const char *path, size_t pool_size);
 /** Map existing shared memory pool by file descriptor. */
-int SimbricksBaseIfSHMPoolMapFd(struct SimbricksBaseIfSHMPool *pool, int fd);
+int UbsimBaseIfSHMPoolMapFd(struct UbsimBaseIfSHMPool *pool, int fd);
 /** Map existing shared memory pool by path. */
-int SimbricksBaseIfSHMPoolMap(struct SimbricksBaseIfSHMPool *pool,
+int UbsimBaseIfSHMPoolMap(struct UbsimBaseIfSHMPool *pool,
                               const char *path);
 /** Unmap shared memory pool, without unlinking it. */
-int SimbricksBaseIfSHMPoolUnmap(struct SimbricksBaseIfSHMPool *pool);
+int UbsimBaseIfSHMPoolUnmap(struct UbsimBaseIfSHMPool *pool);
 /** Delete but don't unmap shared memory pool. */
-int SimbricksBaseIfSHMPoolUnlink(struct SimbricksBaseIfSHMPool *pool);
+int UbsimBaseIfSHMPoolUnlink(struct UbsimBaseIfSHMPool *pool);
 
 /** Initialize params struct with default values */
-void SimbricksBaseIfDefaultParams(struct SimbricksBaseIfParams *params);
+void UbsimBaseIfDefaultParams(struct UbsimBaseIfParams *params);
 
 /** Required SHM size for these parameters */
-size_t SimbricksBaseIfSHMSize(struct SimbricksBaseIfParams *params);
+size_t UbsimBaseIfSHMSize(struct UbsimBaseIfParams *params);
 
-int SimbricksBaseIfInit(struct SimbricksBaseIf *base_if,
-                        struct SimbricksBaseIfParams *params);
-int SimbricksBaseIfManagerSetup(struct SimbricksBaseIf *base_if,
-                                struct SimbricksBaseIfSHMPool *pool,
+int UbsimBaseIfInit(struct UbsimBaseIf *base_if,
+                        struct UbsimBaseIfParams *params);
+int UbsimBaseIfManagerSetup(struct UbsimBaseIf *base_if,
+                                struct UbsimBaseIfSHMPool *pool,
                                 size_t in_offset, size_t out_offset,
                                 size_t in_entries, size_t out_entries,
                                 size_t in_entry_size,
                                 size_t out_entry_size);
 
 /** Create listening base interface. Note this does not wait for a connector. */
-int SimbricksBaseIfListen(struct SimbricksBaseIf *base_if,
-                          struct SimbricksBaseIfSHMPool *pool);
+int UbsimBaseIfListen(struct UbsimBaseIf *base_if,
+                          struct UbsimBaseIfSHMPool *pool);
 /** Initiate connection for base interface. Note this is asynchronous. */
-int SimbricksBaseIfConnect(struct SimbricksBaseIf *base_if);
+int UbsimBaseIfConnect(struct UbsimBaseIf *base_if);
 /** Check if incoming/outgoing connection is established . (non-blocking) */
-int SimbricksBaseIfConnected(struct SimbricksBaseIf *base_if);
+int UbsimBaseIfConnected(struct UbsimBaseIf *base_if);
 /** FD to wait on for listen or connect event. */
-int SimbricksBaseIfConnFd(struct SimbricksBaseIf *base_if);
+int UbsimBaseIfConnFd(struct UbsimBaseIf *base_if);
 /** Block till base_if is connected or failed */
-int SimbricksBaseIfConnsWait(struct SimbricksBaseIf **base_ifs, unsigned n);
+int UbsimBaseIfConnsWait(struct UbsimBaseIf **base_ifs, unsigned n);
 
 /** Send intro. */
-int SimbricksBaseIfIntroSend(struct SimbricksBaseIf *base_if,
+int UbsimBaseIfIntroSend(struct UbsimBaseIf *base_if,
                              const void *payload, size_t payload_len);
 /** Receive intro. */
-int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
+int UbsimBaseIfIntroRecv(struct UbsimBaseIf *base_if, void *payload,
                              size_t *payload_len);
 /** FD to wait on for intro events. */
-int SimbricksBaseIfIntroFd(struct SimbricksBaseIf *base_if);
+int UbsimBaseIfIntroFd(struct UbsimBaseIf *base_if);
 
 /**
  * Completely establish multiple base-ifs in parallel. This handles the parallel
@@ -181,11 +181,11 @@ int SimbricksBaseIfIntroFd(struct SimbricksBaseIf *base_if);
  *
  * @return 0 on success, != 0 otherwise.
  */
-int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs,
+int UbsimBaseIfEstablish(struct UbsimBaseIfEstablishData *ifs,
                              size_t n);
 
-void SimbricksBaseIfClose(struct SimbricksBaseIf *base_if);
-void SimbricksBaseIfUnlink(struct SimbricksBaseIf *base_if);
+void UbsimBaseIfClose(struct UbsimBaseIf *base_if);
+void UbsimBaseIfUnlink(struct UbsimBaseIf *base_if);
 
 /**
  * Read message type from received message.
@@ -193,24 +193,24 @@ void SimbricksBaseIfUnlink(struct SimbricksBaseIf *base_if);
  * @param base_if  Base interface handle (connected).
  * @param msg      Pointer to the previously received message.
  */
-static inline uint8_t SimbricksBaseIfInType(
-    struct SimbricksBaseIf *base_if,
-    volatile union SimbricksProtoBaseMsg *msg) {
-  return (msg->header.own_type & ~SIMBRICKS_PROTO_MSG_OWN_MASK);
+static inline uint8_t UbsimBaseIfInType(
+    struct UbsimBaseIf *base_if,
+    volatile union UbsimProtoBaseMsg *msg) {
+  return (msg->header.own_type & ~UBSIM_PROTO_MSG_OWN_MASK);
 }
 
 /**
  * Poll for an incoming message without advancing the position if one is found.
- * Message must be retrieved again with a call to `SimbricksBaseIfInPoll`
+ * Message must be retrieved again with a call to `UbsimBaseIfInPoll`
  *
  * @param base_if   Base interface handle (connected).
  * @param timestamp Current timestamp (in picoseconds).
  * @return Pointer to the message struct if successful, NULL otherwise.
  */
-static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfInPeek(
-    struct SimbricksBaseIf *base_if, uint64_t timestamp) {
-  volatile union SimbricksProtoBaseMsg *msg =
-      (volatile union SimbricksProtoBaseMsg *)(void *)((uint8_t *)
+static inline volatile union UbsimProtoBaseMsg *UbsimBaseIfInPeek(
+    struct UbsimBaseIf *base_if, uint64_t timestamp) {
+  volatile union UbsimProtoBaseMsg *msg =
+      (volatile union UbsimProtoBaseMsg *)(void *)((uint8_t *)
                                                            base_if->in_queue +
                                                        base_if->in_pos *
                                                            base_if->in_elen);
@@ -218,7 +218,7 @@ static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfInPeek(
       (volatile _Atomic(uint8_t) *)&msg->header.own_type, memory_order_acquire);
 
   /* message not ready */
-  if ((own_type & SIMBRICKS_PROTO_MSG_OWN_MASK) != SIMBRICKS_PROTO_MSG_OWN_CON)
+  if ((own_type & UBSIM_PROTO_MSG_OWN_MASK) != UBSIM_PROTO_MSG_OWN_CON)
     return NULL;
 
   /* if in sync mode, wait till message is ready */
@@ -231,22 +231,22 @@ static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfInPeek(
 
 /**
  * Poll for an incoming message. After processing the message must be freed by
- * calling `SimbricksBaseIfInDone`.
+ * calling `UbsimBaseIfInDone`.
  *
  * @param base_if   Base interface handle (connected).
  * @param timestamp Current timestamp (in picoseconds).
  * @return Pointer to the message struct if successful, NULL otherwise.
  */
-static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfInPoll(
-    struct SimbricksBaseIf *base_if, uint64_t timestamp) {
-  volatile union SimbricksProtoBaseMsg *msg =
-      SimbricksBaseIfInPeek(base_if, timestamp);
+static inline volatile union UbsimProtoBaseMsg *UbsimBaseIfInPoll(
+    struct UbsimBaseIf *base_if, uint64_t timestamp) {
+  volatile union UbsimProtoBaseMsg *msg =
+      UbsimBaseIfInPeek(base_if, timestamp);
 
   if (msg != NULL) {
     base_if->in_pos = (base_if->in_pos + 1) % base_if->in_enum;
 
-    if (SimbricksBaseIfInType(base_if, msg) ==
-        SIMBRICKS_PROTO_MSG_TYPE_TERMINATE) {
+    if (UbsimBaseIfInType(base_if, msg) ==
+        UBSIM_PROTO_MSG_TYPE_TERMINATE) {
       base_if->in_terminated = true;
       base_if->sync = false;
       base_if->in_timestamp = UINT64_MAX;
@@ -263,13 +263,13 @@ static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfInPoll(
  * @param base_if  Base interface handle (connected).
  * @param msg      Pointer to the previously received message.
  */
-static inline void SimbricksBaseIfInDone(
-    struct SimbricksBaseIf *base_if,
-    volatile union SimbricksProtoBaseMsg *msg) {
+static inline void UbsimBaseIfInDone(
+    struct UbsimBaseIf *base_if,
+    volatile union UbsimProtoBaseMsg *msg) {
   atomic_store_explicit(
       (volatile _Atomic(uint8_t) *)&msg->header.own_type,
-      (uint8_t)((msg->header.own_type & ~SIMBRICKS_PROTO_MSG_OWN_MASK) |
-                SIMBRICKS_PROTO_MSG_OWN_PRO),
+      (uint8_t)((msg->header.own_type & ~UBSIM_PROTO_MSG_OWN_MASK) |
+                UBSIM_PROTO_MSG_OWN_PRO),
       memory_order_release);
 }
 
@@ -280,8 +280,8 @@ static inline void SimbricksBaseIfInDone(
  * @param base_if Base interface handle (connected).
  * @return Input timestamp.
  */
-static inline uint64_t SimbricksBaseIfInTimestamp(
-    struct SimbricksBaseIf *base_if) {
+static inline uint64_t UbsimBaseIfInTimestamp(
+    struct UbsimBaseIf *base_if) {
   return base_if->in_timestamp;
 }
 
@@ -290,30 +290,30 @@ static inline uint64_t SimbricksBaseIfInTimestamp(
  *
  * @param base_if Base interface handle (connected).
  */
-static inline int SimbricksBaseIfInTerminated(struct SimbricksBaseIf *base_if) {
+static inline int UbsimBaseIfInTerminated(struct UbsimBaseIf *base_if) {
   return base_if->in_terminated;
 }
 
 /**
  * Allocate a new message in the queue. Must be followed by a call to
- * `SimbricksBaseIfOutSend`.
+ * `UbsimBaseIfOutSend`.
  *
  * @param base_if   Base interface handle (connected).
  * @param timestamp Current timestamp (in picoseconds).
  * @return Pointer to the message struct if successful, NULL otherwise.
  */
-static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfOutAlloc(
-    struct SimbricksBaseIf *base_if, uint64_t timestamp) {
-  volatile union SimbricksProtoBaseMsg *msg =
-      (volatile union SimbricksProtoBaseMsg *)(void *)((uint8_t *)
+static inline volatile union UbsimProtoBaseMsg *UbsimBaseIfOutAlloc(
+    struct UbsimBaseIf *base_if, uint64_t timestamp) {
+  volatile union UbsimProtoBaseMsg *msg =
+      (volatile union UbsimProtoBaseMsg *)(void *)((uint8_t *)
                                                            base_if->out_queue +
                                                        base_if->out_pos *
                                                            base_if->out_elen);
 
   uint8_t own_type = atomic_load_explicit(
       (volatile _Atomic(uint8_t) *)&msg->header.own_type, memory_order_acquire);
-  if ((own_type & SIMBRICKS_PROTO_MSG_OWN_MASK) !=
-      SIMBRICKS_PROTO_MSG_OWN_PRO) {
+  if ((own_type & UBSIM_PROTO_MSG_OWN_MASK) !=
+      UBSIM_PROTO_MSG_OWN_PRO) {
     return NULL;
   }
 
@@ -334,11 +334,11 @@ static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfOutAlloc(
                    message (other than the type.).
  * @param msg_type Message type to set (without ownership flag).
  */
-static inline void SimbricksBaseIfOutSend(
-    struct SimbricksBaseIf *base_if, volatile union SimbricksProtoBaseMsg *msg,
+static inline void UbsimBaseIfOutSend(
+    struct UbsimBaseIf *base_if, volatile union UbsimProtoBaseMsg *msg,
     uint8_t msg_type) {
   atomic_store_explicit((volatile _Atomic(uint8_t) *)&msg->header.own_type,
-                        (uint8_t)(msg_type | SIMBRICKS_PROTO_MSG_OWN_CON),
+                        (uint8_t)(msg_type | UBSIM_PROTO_MSG_OWN_CON),
                         memory_order_release);
 }
 
@@ -350,19 +350,19 @@ static inline void SimbricksBaseIfOutSend(
  * @return 0 if sync successfully sent or sync was unnecessary, -1 if a
  * necessary sync message could not be sent because the queue is full.
  */
-static inline int SimbricksBaseIfOutSync(struct SimbricksBaseIf *base_if,
+static inline int UbsimBaseIfOutSync(struct UbsimBaseIf *base_if,
                                          uint64_t timestamp) {
   if (!base_if->sync ||
       (base_if->out_timestamp > 0 &&
        timestamp - base_if->out_timestamp < base_if->params.sync_interval))
     return 0;
 
-  volatile union SimbricksProtoBaseMsg *msg =
-      SimbricksBaseIfOutAlloc(base_if, timestamp);
+  volatile union UbsimProtoBaseMsg *msg =
+      UbsimBaseIfOutAlloc(base_if, timestamp);
   if (!msg)
     return -1;
 
-  SimbricksBaseIfOutSend(base_if, msg, SIMBRICKS_PROTO_MSG_TYPE_SYNC);
+  UbsimBaseIfOutSend(base_if, msg, UBSIM_PROTO_MSG_TYPE_SYNC);
   return 0;
 }
 
@@ -372,8 +372,8 @@ static inline int SimbricksBaseIfOutSync(struct SimbricksBaseIf *base_if,
  * @param base_if   Base interface handle (connected).
  * @return Timestamp. Undefined if synchronization is disabled.
  */
-static inline uint64_t SimbricksBaseIfOutNextSync(
-    struct SimbricksBaseIf *base_if) {
+static inline uint64_t UbsimBaseIfOutNextSync(
+    struct UbsimBaseIf *base_if) {
   if (base_if->out_timestamp == UINT64_MAX)
     return UINT64_MAX;
   return base_if->out_timestamp + base_if->params.sync_interval;
@@ -385,7 +385,7 @@ static inline uint64_t SimbricksBaseIfOutNextSync(
  * @param base_if Base interface handle (connected).
  * @return Maximal message length in bytes.
  */
-static inline size_t SimbricksBaseIfOutMsgLen(struct SimbricksBaseIf *base_if) {
+static inline size_t UbsimBaseIfOutMsgLen(struct UbsimBaseIf *base_if) {
   return base_if->out_elen;
 }
 
@@ -395,7 +395,7 @@ static inline size_t SimbricksBaseIfOutMsgLen(struct SimbricksBaseIf *base_if) {
  * @param base_if Base interface handle (connected).
  * @return true if synchronized, false otherwise.
  */
-static inline bool SimbricksBaseIfSyncEnabled(struct SimbricksBaseIf *base_if) {
+static inline bool UbsimBaseIfSyncEnabled(struct UbsimBaseIf *base_if) {
   return base_if->sync;
 }
 
@@ -403,4 +403,4 @@ static inline bool SimbricksBaseIfSyncEnabled(struct SimbricksBaseIf *base_if) {
 }
 #endif
 
-#endif  // SIMBRICKS_BASE_IF_H_
+#endif  // UBSIM_BASE_IF_H_

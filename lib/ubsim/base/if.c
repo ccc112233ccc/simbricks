@@ -24,7 +24,7 @@
 
 #define _GNU_SOURCE
 
-#include "lib/simbricks/base/if.h"
+#include "lib/ubsim/base/if.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -38,7 +38,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include <simbricks/base/proto.h>
+#include <ubsim/base/proto.h>
 
 /* Compatibility fallbacks for macOS / non-Linux platforms */
 #ifndef MAP_POPULATE
@@ -84,19 +84,19 @@ enum ConnState {
   kConnOpen,
 };
 
-int SimbricksBaseIfSHMPoolCreate(struct SimbricksBaseIfSHMPool *pool,
+int UbsimBaseIfSHMPoolCreate(struct UbsimBaseIfSHMPool *pool,
                                  const char *path, size_t pool_size) {
   pool->path = path;
   pool->size = pool_size;
   pool->pos = 0;
 
   if ((pool->fd = open(path, O_CREAT | O_RDWR, 0666)) == -1) {
-    perror("SimbricksBaseIfSHMPoolCreate: open failed");
+    perror("UbsimBaseIfSHMPoolCreate: open failed");
     return -1;
   }
 
   if (ftruncate(pool->fd, pool_size) != 0) {
-    perror("SimbricksBaseIfSHMPoolCreate: ftruncate failed");
+    perror("UbsimBaseIfSHMPoolCreate: ftruncate failed");
     close(pool->fd);
     return -1;
   }
@@ -104,7 +104,7 @@ int SimbricksBaseIfSHMPoolCreate(struct SimbricksBaseIfSHMPool *pool,
   pool->base = mmap(NULL, pool_size, PROT_READ | PROT_WRITE,
                     MAP_SHARED | MAP_POPULATE, pool->fd, 0);
   if (pool->base == (void *)-1) {
-    perror("SimbricksBaseIfSHMPoolCreate: mmap failed");
+    perror("UbsimBaseIfSHMPoolCreate: mmap failed");
     return -1;
   }
 
@@ -117,11 +117,11 @@ int SimbricksBaseIfSHMPoolCreate(struct SimbricksBaseIfSHMPool *pool,
   return 0;
 }
 
-int SimbricksBaseIfSHMPoolMapFd(struct SimbricksBaseIfSHMPool *pool, int fd) {
+int UbsimBaseIfSHMPoolMapFd(struct UbsimBaseIfSHMPool *pool, int fd) {
   struct stat statbuf;
 
   if (fstat(fd, &statbuf) != 0) {
-    perror("SimbricksBaseIfSHMPoolMap: fstat failed");
+    perror("UbsimBaseIfSHMPoolMap: fstat failed");
     close(fd);
     return -1;
   }
@@ -129,7 +129,7 @@ int SimbricksBaseIfSHMPoolMapFd(struct SimbricksBaseIfSHMPool *pool, int fd) {
   pool->base =
       mmap(NULL, statbuf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (pool->base == MAP_FAILED) {
-    perror("SimbricksBaseIfSHMPoolMap: mmap failed");
+    perror("UbsimBaseIfSHMPoolMap: mmap failed");
     return -1;
   }
 
@@ -140,25 +140,25 @@ int SimbricksBaseIfSHMPoolMapFd(struct SimbricksBaseIfSHMPool *pool, int fd) {
   return 0;
 }
 
-int SimbricksBaseIfSHMPoolMap(struct SimbricksBaseIfSHMPool *pool,
+int UbsimBaseIfSHMPoolMap(struct UbsimBaseIfSHMPool *pool,
                               const char *path) {
   int fd;
 
   if ((fd = open(path, O_RDWR, 0666)) == -1) {
-    perror("SimbricksBaseIfSHMPoolMap: open failed");
+    perror("UbsimBaseIfSHMPoolMap: open failed");
     return -1;
   }
 
-  if (SimbricksBaseIfSHMPoolMapFd(pool, fd)) {
+  if (UbsimBaseIfSHMPoolMapFd(pool, fd)) {
     close(fd);
     return -1;
   }
   return 0;
 }
 
-int SimbricksBaseIfSHMPoolUnmap(struct SimbricksBaseIfSHMPool *pool) {
+int UbsimBaseIfSHMPoolUnmap(struct UbsimBaseIfSHMPool *pool) {
   if (munmap(pool->base, pool->size)) {
-    perror("SimbricksBaseIfSHMPoolUnmap: unmap failed");
+    perror("UbsimBaseIfSHMPoolUnmap: unmap failed");
     return -1;
   }
   close(pool->fd);
@@ -169,34 +169,34 @@ int SimbricksBaseIfSHMPoolUnmap(struct SimbricksBaseIfSHMPool *pool) {
   return 0;
 }
 
-int SimbricksBaseIfSHMPoolUnlink(struct SimbricksBaseIfSHMPool *pool) {
+int UbsimBaseIfSHMPoolUnlink(struct UbsimBaseIfSHMPool *pool) {
   return unlink(pool->path);
 }
 
-void SimbricksBaseIfDefaultParams(struct SimbricksBaseIfParams *params) {
+void UbsimBaseIfDefaultParams(struct UbsimBaseIfParams *params) {
   params->link_latency = 500 * 1000;
   params->sync_interval = params->link_latency;
   params->sock_path = NULL;
-  params->sync_mode = kSimbricksBaseIfSyncOptional;
+  params->sync_mode = kUbsimBaseIfSyncOptional;
   params->in_num_entries = params->out_num_entries = 8192;
   params->in_entries_size = params->out_entries_size = 2048;
   params->blocking_conn = false;
-  params->upper_layer_proto = SIMBRICKS_PROTO_ID_BASE;
+  params->upper_layer_proto = UBSIM_PROTO_ID_BASE;
 }
 
-size_t SimbricksBaseIfSHMSize(struct SimbricksBaseIfParams *params) {
+size_t UbsimBaseIfSHMSize(struct UbsimBaseIfParams *params) {
   return params->in_num_entries * params->in_entries_size +
          params->out_num_entries * params->out_entries_size;
 }
 
-int SimbricksBaseIfInit(struct SimbricksBaseIf *base_if,
-                        struct SimbricksBaseIfParams *params) {
+int UbsimBaseIfInit(struct UbsimBaseIf *base_if,
+                        struct UbsimBaseIfParams *params) {
   /* ensure latency >= sync interval in synchronization case */
-  bool must_check_sync = params->sync_mode == kSimbricksBaseIfSyncOptional ||
-                         params->sync_mode == kSimbricksBaseIfSyncRequired;
+  bool must_check_sync = params->sync_mode == kUbsimBaseIfSyncOptional ||
+                         params->sync_mode == kUbsimBaseIfSyncRequired;
   if (must_check_sync && params->link_latency < params->sync_interval) {
     fprintf(stderr,
-            "SimbricksBaseIfInit: latency must be larger or equal to sync"
+            "UbsimBaseIfInit: latency must be larger or equal to sync"
             " interval\n");
     return -1;
   }
@@ -205,8 +205,8 @@ int SimbricksBaseIfInit(struct SimbricksBaseIf *base_if,
   return 0;
 }
 
-int SimbricksBaseIfManagerSetup(struct SimbricksBaseIf *base_if,
-                                struct SimbricksBaseIfSHMPool *pool,
+int UbsimBaseIfManagerSetup(struct UbsimBaseIf *base_if,
+                                struct UbsimBaseIfSHMPool *pool,
                                 size_t in_offset, size_t out_offset,
                                 size_t in_entries, size_t out_entries,
                                 size_t in_entry_size,
@@ -231,7 +231,7 @@ int SimbricksBaseIfManagerSetup(struct SimbricksBaseIf *base_if,
   return 0;
 }
 
-static int AcceptOnBaseIf(struct SimbricksBaseIf *base_if) {
+static int AcceptOnBaseIf(struct UbsimBaseIf *base_if) {
   int flags = (!base_if->params.blocking_conn ? SOCK_NONBLOCK : 0);
   base_if->conn_fd = accept4_compat(base_if->listen_fd, NULL, NULL, flags);
   if (base_if->conn_fd >= 0) {
@@ -250,16 +250,16 @@ static int AcceptOnBaseIf(struct SimbricksBaseIf *base_if) {
   }
 }
 
-int SimbricksBaseIfListen(struct SimbricksBaseIf *base_if,
-                          struct SimbricksBaseIfSHMPool *pool) {
+int UbsimBaseIfListen(struct UbsimBaseIf *base_if,
+                          struct UbsimBaseIfSHMPool *pool) {
   struct sockaddr_un saun;
   int flags;
-  struct SimbricksBaseIfParams *params = &base_if->params;
+  struct UbsimBaseIfParams *params = &base_if->params;
 
   /* make sure the socket path does not exceed the limits of saun.sun_path */
   if (strlen(params->sock_path) >= sizeof(saun.sun_path)) {
     fprintf(stderr,
-            "SimbricksBaseIfListen: socket path %s is too long "
+            "UbsimBaseIfListen: socket path %s is too long "
             "(exceeding %lu characters)\n",
             params->sock_path, sizeof(saun.sun_path) - 1);
     errno = ENAMETOOLONG;
@@ -272,13 +272,13 @@ int SimbricksBaseIfListen(struct SimbricksBaseIf *base_if,
   size_t out_len = params->out_num_entries * params->out_entries_size;
   if (pool->pos + in_len + out_len > pool->size) {
     fprintf(stderr,
-            "SimbricksBaseIfListen: not enough memory available in "
+            "UbsimBaseIfListen: not enough memory available in "
             "pool");
     return -1;
   }
 
   if ((base_if->listen_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-    perror("SimbricksBaseIfListen: socket failed");
+    perror("UbsimBaseIfListen: socket failed");
     return -1;
   }
 
@@ -286,7 +286,7 @@ int SimbricksBaseIfListen(struct SimbricksBaseIf *base_if,
     flags = fcntl(base_if->listen_fd, F_GETFL);
     if (flags == -1 ||
         fcntl(base_if->listen_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-      perror("SimbricksBaseIfListen: fcntl set nonblock failed");
+      perror("UbsimBaseIfListen: fcntl set nonblock failed");
       goto out_error;
     }
   }
@@ -295,12 +295,12 @@ int SimbricksBaseIfListen(struct SimbricksBaseIf *base_if,
   saun.sun_family = AF_UNIX;
   strncpy(saun.sun_path, params->sock_path, sizeof(saun.sun_path) - 1);
   if (bind(base_if->listen_fd, (struct sockaddr *)&saun, sizeof(saun))) {
-    perror("SimbricksBaseIfListen: bind failed");
+    perror("UbsimBaseIfListen: bind failed");
     goto out_error;
   }
 
   if (listen(base_if->listen_fd, 5)) {
-    perror("SimbricksBaseIfListen: listen failed");
+    perror("UbsimBaseIfListen: listen failed");
     goto out_error;
   }
 
@@ -329,15 +329,15 @@ out_error:
   return -1;
 }
 
-int SimbricksBaseIfConnect(struct SimbricksBaseIf *base_if) {
+int UbsimBaseIfConnect(struct UbsimBaseIf *base_if) {
   struct sockaddr_un saun;
   int flags;
-  struct SimbricksBaseIfParams *params = &base_if->params;
+  struct UbsimBaseIfParams *params = &base_if->params;
 
   /* make sure the socket path does not exceed the limits of saun.sun_path */
   if (strlen(params->sock_path) >= sizeof(saun.sun_path)) {
     fprintf(stderr,
-            "SimbricksBaseIfConnect: socket path %s is too long "
+            "UbsimBaseIfConnect: socket path %s is too long "
             "(exceeding %lu characters)\n",
             params->sock_path, sizeof(saun.sun_path) - 1);
     errno = ENAMETOOLONG;
@@ -347,7 +347,7 @@ int SimbricksBaseIfConnect(struct SimbricksBaseIf *base_if) {
   base_if->listener = false;
 
   if ((base_if->conn_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-    perror("SimbricksBaseIfConnect: socket failed");
+    perror("UbsimBaseIfConnect: socket failed");
     return -1;
   }
 
@@ -355,7 +355,7 @@ int SimbricksBaseIfConnect(struct SimbricksBaseIf *base_if) {
     flags = fcntl(base_if->conn_fd, F_GETFL);
     if (flags == -1 ||
         fcntl(base_if->conn_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-      perror("SimbricksBaseIfConnect: fcntl set nonblock failed");
+      perror("UbsimBaseIfConnect: fcntl set nonblock failed");
       goto out_error;
     }
   }
@@ -370,7 +370,7 @@ int SimbricksBaseIfConnect(struct SimbricksBaseIf *base_if) {
   } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
     base_if->conn_state = kConnConnecting;
   } else {
-    perror("SimbricksBaseIfConnect: connect failed");
+    perror("UbsimBaseIfConnect: connect failed");
     base_if->conn_state = kConnClosed;
     return -1;
   }
@@ -383,7 +383,7 @@ out_error:
   return -1;
 }
 
-int SimbricksBaseIfConnected(struct SimbricksBaseIf *base_if) {
+int UbsimBaseIfConnected(struct UbsimBaseIf *base_if) {
   switch (base_if->conn_state) {
     case kConnClosed:
       return -1;
@@ -399,7 +399,7 @@ int SimbricksBaseIfConnected(struct SimbricksBaseIf *base_if) {
 
       int ret = poll(&pfd, 1, 0);
       if (ret < 0 || (ret == 1 && pfd.revents != POLLOUT)) {
-        perror("SimbricksBaseIfConnected: poll failed");
+        perror("UbsimBaseIfConnected: poll failed");
         close(base_if->conn_fd);
         base_if->conn_fd = -1;
         base_if->conn_state = kConnClosed;
@@ -412,7 +412,7 @@ int SimbricksBaseIfConnected(struct SimbricksBaseIf *base_if) {
       socklen_t slen = sizeof(status);
       if (getsockopt(base_if->conn_fd, SOL_SOCKET, SO_ERROR, &status, &slen) !=
           0) {
-        perror("SimbricksBaseIfConnected: getsockopt failed");
+        perror("UbsimBaseIfConnected: getsockopt failed");
         close(base_if->conn_fd);
         base_if->conn_fd = -1;
         base_if->conn_state = kConnClosed;
@@ -439,13 +439,13 @@ int SimbricksBaseIfConnected(struct SimbricksBaseIf *base_if) {
       return 0;
 
     default:
-      fprintf(stderr, "SimbricksBaseIfConnected: unexpected conn state %u\n",
+      fprintf(stderr, "UbsimBaseIfConnected: unexpected conn state %u\n",
               base_if->conn_state);
       abort();
   }
 }
 
-int SimbricksBaseIfConnFd(struct SimbricksBaseIf *base_if) {
+int UbsimBaseIfConnFd(struct UbsimBaseIf *base_if) {
   if (base_if->conn_state == kConnListening) {
     return base_if->listen_fd;
   } else if (base_if->conn_state == kConnConnecting) {
@@ -455,7 +455,7 @@ int SimbricksBaseIfConnFd(struct SimbricksBaseIf *base_if) {
   }
 }
 
-int SimbricksBaseIfConnsWait(struct SimbricksBaseIf **base_ifs, unsigned n) {
+int UbsimBaseIfConnsWait(struct UbsimBaseIf **base_ifs, unsigned n) {
   unsigned i, n_wait;
   struct pollfd pfds[n];
   unsigned ids[n];
@@ -464,7 +464,7 @@ int SimbricksBaseIfConnsWait(struct SimbricksBaseIf **base_ifs, unsigned n) {
     /* prepare poll events */
     n_wait = 0;
     for (i = 0; i < n; i++) {
-      struct SimbricksBaseIf *base_if = base_ifs[i];
+      struct UbsimBaseIf *base_if = base_ifs[i];
       switch (base_if->conn_state) {
         case kConnListening:
           ids[n_wait] = i;
@@ -500,21 +500,21 @@ int SimbricksBaseIfConnsWait(struct SimbricksBaseIf **base_ifs, unsigned n) {
 
     int ret = poll(pfds, n_wait, -1);
     if (ret < 0) {
-      perror("SimbricksBaseIfConnsWait: poll failed");
+      perror("UbsimBaseIfConnsWait: poll failed");
       return -1;
     }
 
     for (i = 0; i < n; i++) {
-      struct SimbricksBaseIf *bif = base_ifs[ids[i]];
+      struct UbsimBaseIf *bif = base_ifs[ids[i]];
 
       if ((pfds[i].revents & ~(POLLIN | POLLOUT)) != 0) {
-        perror("SimbricksBaseIfConnsWait: error event");
+        perror("UbsimBaseIfConnsWait: error event");
         return -1;
       }
 
-      ret = SimbricksBaseIfConnected(bif);
+      ret = UbsimBaseIfConnected(bif);
       if (ret < 0) {
-        perror("SimbricksBaseIfConnsWait: connected failed");
+        perror("UbsimBaseIfConnsWait: connected failed");
         return -1;
       } else if (ret == 0) {
         n_wait--;
@@ -525,7 +525,7 @@ int SimbricksBaseIfConnsWait(struct SimbricksBaseIf **base_ifs, unsigned n) {
 }
 
 /** Send intro. */
-int SimbricksBaseIfIntroSend(struct SimbricksBaseIf *base_if,
+int UbsimBaseIfIntroSend(struct UbsimBaseIf *base_if,
                              const void *payload, size_t payload_len) {
   if (base_if->conn_state != kConnAwaitHandshakeRxTx &&
       base_if->conn_state != kConnAwaitHandshakeTx) {
@@ -551,16 +551,16 @@ int SimbricksBaseIfIntroSend(struct SimbricksBaseIf *base_if,
   iov[1].iov_base = (void *)payload;
   iov[1].iov_len = payload_len;
 
-  struct SimbricksProtoListenerIntro l_intro;
-  struct SimbricksProtoConnecterIntro c_intro;
+  struct UbsimProtoListenerIntro l_intro;
+  struct UbsimProtoConnecterIntro c_intro;
   if (base_if->listener) {
-    l_intro.version = SIMBRICKS_PROTO_VERSION;
+    l_intro.version = UBSIM_PROTO_VERSION;
     l_intro.flags =
-        (base_if->params.sync_mode == kSimbricksBaseIfSyncDisabled
+        (base_if->params.sync_mode == kUbsimBaseIfSyncDisabled
              ? 0
-             : (SIMBRICKS_PROTO_FLAGS_LI_SYNC |
-                (base_if->params.sync_mode == kSimbricksBaseIfSyncRequired
-                     ? SIMBRICKS_PROTO_FLAGS_LI_SYNC_FORCE
+             : (UBSIM_PROTO_FLAGS_LI_SYNC |
+                (base_if->params.sync_mode == kUbsimBaseIfSyncRequired
+                     ? UBSIM_PROTO_FLAGS_LI_SYNC_FORCE
                      : 0)));
 
     l_intro.l2c_offset = base_if->out_queue - base_if->shm->base;
@@ -587,13 +587,13 @@ int SimbricksBaseIfIntroSend(struct SimbricksBaseIf *base_if,
     cmsg->cmsg_len = CMSG_LEN(sizeof(int));
     *(int *)CMSG_DATA(cmsg) = base_if->shm->fd;
   } else {
-    c_intro.version = SIMBRICKS_PROTO_VERSION;
+    c_intro.version = UBSIM_PROTO_VERSION;
     c_intro.flags =
-        (base_if->params.sync_mode == kSimbricksBaseIfSyncDisabled
+        (base_if->params.sync_mode == kUbsimBaseIfSyncDisabled
              ? 0
-             : (SIMBRICKS_PROTO_FLAGS_CO_SYNC |
-                (base_if->params.sync_mode == kSimbricksBaseIfSyncRequired
-                     ? SIMBRICKS_PROTO_FLAGS_CO_SYNC_FORCE
+             : (UBSIM_PROTO_FLAGS_CO_SYNC |
+                (base_if->params.sync_mode == kUbsimBaseIfSyncRequired
+                     ? UBSIM_PROTO_FLAGS_CO_SYNC_FORCE
                      : 0)));
     c_intro.upper_layer_proto = base_if->params.upper_layer_proto;
     c_intro.upper_layer_intro_off = sizeof(c_intro);
@@ -604,11 +604,11 @@ int SimbricksBaseIfIntroSend(struct SimbricksBaseIf *base_if,
 
   ssize_t ret = sendmsg(base_if->conn_fd, &msg, 0);
   if (ret < 0) {
-    perror("SimbricksBaseIfIntroSend: sendmsg failed");
+    perror("UbsimBaseIfIntroSend: sendmsg failed");
     return -1;
   } else if (ret != (ssize_t)(iov[0].iov_len + iov[1].iov_len)) {
     fprintf(stderr,
-            "SimbricksBaseIfIntroSend: sendmsg was short, "
+            "UbsimBaseIfIntroSend: sendmsg was short, "
             "currently unsupported\n");
     return -1;
   }
@@ -619,7 +619,7 @@ int SimbricksBaseIfIntroSend(struct SimbricksBaseIf *base_if,
     base_if->conn_state = kConnAwaitHandshakeRx;
   } else {
     fprintf(stderr,
-            "SimbricksBaseIfIntroSend: connection in unexpected "
+            "UbsimBaseIfIntroSend: connection in unexpected "
             "state at the end.\n");
     abort();
   }
@@ -628,7 +628,7 @@ int SimbricksBaseIfIntroSend(struct SimbricksBaseIf *base_if,
 }
 
 /** Receive intro. */
-int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
+int UbsimBaseIfIntroRecv(struct UbsimBaseIf *base_if, void *payload,
                              size_t *payload_len) {
   if (base_if->conn_state != kConnAwaitHandshakeRxTx &&
       base_if->conn_state != kConnAwaitHandshakeRx) {
@@ -668,7 +668,7 @@ int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
     // no handshake available yet
     return 1;
   } else if (ret < 0) {
-    perror("SimbricksBaseIfIntroRecv: recvmsg failed");
+    perror("UbsimBaseIfIntroRecv: recvmsg failed");
     return -1;
   }
 
@@ -676,50 +676,50 @@ int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
   bool sync, sync_force;
 
   if (base_if->listener) {
-    struct SimbricksProtoConnecterIntro *c_intro =
-        (struct SimbricksProtoConnecterIntro *)intro_buf;
-    sync = c_intro->flags & SIMBRICKS_PROTO_FLAGS_CO_SYNC;
-    sync_force = c_intro->flags & SIMBRICKS_PROTO_FLAGS_CO_SYNC_FORCE;
+    struct UbsimProtoConnecterIntro *c_intro =
+        (struct UbsimProtoConnecterIntro *)intro_buf;
+    sync = c_intro->flags & UBSIM_PROTO_FLAGS_CO_SYNC;
+    sync_force = c_intro->flags & UBSIM_PROTO_FLAGS_CO_SYNC_FORCE;
     version = c_intro->version;
     upper_proto = c_intro->upper_layer_proto;
     upper_off = c_intro->upper_layer_intro_off;
   } else {
-    struct SimbricksProtoListenerIntro *l_intro =
-        (struct SimbricksProtoListenerIntro *)intro_buf;
+    struct UbsimProtoListenerIntro *l_intro =
+        (struct UbsimProtoListenerIntro *)intro_buf;
 
-    sync = l_intro->flags & SIMBRICKS_PROTO_FLAGS_LI_SYNC;
-    sync_force = l_intro->flags & SIMBRICKS_PROTO_FLAGS_LI_SYNC_FORCE;
+    sync = l_intro->flags & UBSIM_PROTO_FLAGS_LI_SYNC;
+    sync_force = l_intro->flags & UBSIM_PROTO_FLAGS_LI_SYNC_FORCE;
     version = l_intro->version;
     upper_proto = l_intro->upper_layer_proto;
     upper_off = l_intro->upper_layer_intro_off;
   }
 
-  if (version != SIMBRICKS_PROTO_VERSION) {
-    fprintf(stderr, "SimbricksBaseIfIntroRecv: unexpected version (%lx)\n",
+  if (version != UBSIM_PROTO_VERSION) {
+    fprintf(stderr, "UbsimBaseIfIntroRecv: unexpected version (%lx)\n",
             version);
     return -1;
   }
 
   if (upper_proto != base_if->params.upper_layer_proto) {
     fprintf(stderr,
-            "SimbricksBaseIfIntroRecv: peer's upper layer proto (%lx) "
+            "UbsimBaseIfIntroRecv: peer's upper layer proto (%lx) "
             "does not match ours (%lx)\n",
             upper_proto, base_if->params.upper_layer_proto);
     return -1;
   }
 
-  if (sync_force && base_if->params.sync_mode == kSimbricksBaseIfSyncDisabled) {
+  if (sync_force && base_if->params.sync_mode == kUbsimBaseIfSyncDisabled) {
     fprintf(stderr,
-            "SimbricksBaseIfIntroRecv: peer forced sync but we haved "
+            "UbsimBaseIfIntroRecv: peer forced sync but we haved "
             "it disabled.\n");
     return -1;
   } else if (!sync && !sync_force &&
-             base_if->params.sync_mode == kSimbricksBaseIfSyncRequired) {
+             base_if->params.sync_mode == kUbsimBaseIfSyncRequired) {
     fprintf(stderr,
-            "SimbricksBaseIfIntroRecv: sync required locally, put peer "
+            "UbsimBaseIfIntroRecv: sync required locally, put peer "
             "offers no sync.\n");
     return -1;
-  } else if (base_if->params.sync_mode == kSimbricksBaseIfSyncDisabled) {
+  } else if (base_if->params.sync_mode == kUbsimBaseIfSyncDisabled) {
     base_if->sync = false;
   } else {
     base_if->sync = sync || sync_force;
@@ -728,7 +728,7 @@ int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
   size_t upper_layer_len = (size_t)ret - upper_off;
   if (*payload_len < upper_layer_len) {
     fprintf(stderr,
-            "SimbricksBaseIfIntroRecv: upper layer intro does not "
+            "UbsimBaseIfIntroRecv: upper layer intro does not "
             "fit in provided buffer\n");
     return -1;
   }
@@ -737,26 +737,26 @@ int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
 
   if (!base_if->listener) {
     // handle shm setup
-    struct SimbricksProtoListenerIntro *l_intro =
-        (struct SimbricksProtoListenerIntro *)intro_buf;
+    struct UbsimProtoListenerIntro *l_intro =
+        (struct UbsimProtoListenerIntro *)intro_buf;
 
     cmsg = CMSG_FIRSTHDR(&msg);
     if (msg.msg_controllen <= 0 || cmsg->cmsg_len != CMSG_LEN(sizeof(int))) {
       /* TODO fix error handling (leaking fds) */
       fprintf(stderr,
-              "SimbricksBaseIfIntroRecv: getting shm fd failed (%zu) "
+              "UbsimBaseIfIntroRecv: getting shm fd failed (%zu) "
               "(%p != %zu)\n",
               msg.msg_controllen, cmsg, CMSG_LEN(sizeof(int)));
       return -1;
     }
     int shmfd = *(int *)CMSG_DATA(cmsg);
     if ((base_if->shm = calloc(1, sizeof(*base_if->shm))) == NULL) {
-      fprintf(stderr, "SimbricksBaseIfIntroRecv: getting shm fd failed\n");
+      fprintf(stderr, "UbsimBaseIfIntroRecv: getting shm fd failed\n");
       return -1;
     }
 
-    if (SimbricksBaseIfSHMPoolMapFd(base_if->shm, shmfd)) {
-      fprintf(stderr, "SimbricksBaseIfIntroRecv: mapping shm failed\n");
+    if (UbsimBaseIfSHMPoolMapFd(base_if->shm, shmfd)) {
+      fprintf(stderr, "UbsimBaseIfIntroRecv: mapping shm failed\n");
       close(shmfd);
       free(base_if->shm);
       return -1;
@@ -777,7 +777,7 @@ int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
     base_if->conn_state = kConnAwaitHandshakeTx;
   } else {
     fprintf(stderr,
-            "SimbricksBaseIfIntroRecv: connection in unexpected "
+            "UbsimBaseIfIntroRecv: connection in unexpected "
             "state at the end.\n");
     abort();
   }
@@ -786,7 +786,7 @@ int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
 }
 
 /** FD to wait on for intro events. */
-int SimbricksBaseIfIntroFd(struct SimbricksBaseIf *base_if) {
+int UbsimBaseIfIntroFd(struct UbsimBaseIf *base_if) {
   switch (base_if->conn_state) {
     case kConnAwaitHandshakeRxTx: /* FALLTRHOUGH */
     case kConnAwaitHandshakeRx:   /* FALLTRHOUGH */
@@ -798,7 +798,7 @@ int SimbricksBaseIfIntroFd(struct SimbricksBaseIf *base_if) {
   }
 }
 
-int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs,
+int UbsimBaseIfEstablish(struct UbsimBaseIfEstablishData *ifs,
                              size_t n) {
   struct pollfd pfds[n];
   unsigned n_pfd;
@@ -810,24 +810,24 @@ int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs,
     n_pfd = 0;
     established = 0;
     for (i = 0; i < n; i++) {
-      struct SimbricksBaseIf *bif = ifs[i].base_if;
+      struct UbsimBaseIf *bif = ifs[i].base_if;
 
       // woops something went wrong on this connection
       if (bif->conn_state == kConnClosed) {
         fprintf(stderr,
-                "SimBricksBaseIfEstablish: connection %zu is "
+                "UbsimBaseIfEstablish: connection %zu is "
                 "closed\n",
                 i);
         return -1;
       }
 
       // check if it is connected yet (this might change that)
-      ret = SimbricksBaseIfConnected(bif);
+      ret = UbsimBaseIfConnected(bif);
       if (ret < 0) {
-        fprintf(stderr, "SimBricksBaseIfEstablish: connecting %zu failed\n", i);
+        fprintf(stderr, "UbsimBaseIfEstablish: connecting %zu failed\n", i);
         return -1;
       } else if (ret > 0) {
-        pfds[n_pfd].fd = SimbricksBaseIfConnFd(bif);
+        pfds[n_pfd].fd = UbsimBaseIfConnFd(bif);
         pfds[n_pfd].events =
             (bif->conn_state == kConnListening ? POLLIN : POLLOUT);
         pfds[n_pfd].revents = 0;
@@ -838,10 +838,10 @@ int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs,
       // next check if we are now ready to send the handshake
       if ((bif->conn_state == kConnAwaitHandshakeTx ||
            bif->conn_state == kConnAwaitHandshakeRxTx) &&
-          SimbricksBaseIfIntroSend(bif, ifs[i].tx_intro, ifs[i].tx_intro_len) !=
+          UbsimBaseIfIntroSend(bif, ifs[i].tx_intro, ifs[i].tx_intro_len) !=
               0) {
         fprintf(stderr,
-                "SimBricksBaseIfEstablish: Sending intro on %zu "
+                "UbsimBaseIfEstablish: Sending intro on %zu "
                 "failed\n",
                 i);
         return -1;
@@ -849,16 +849,16 @@ int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs,
 
       // finally check if we can receive the handshake now
       if (bif->conn_state == kConnAwaitHandshakeRx) {
-        ret = SimbricksBaseIfIntroRecv(bif, ifs[i].rx_intro,
+        ret = UbsimBaseIfIntroRecv(bif, ifs[i].rx_intro,
                                        &ifs[i].rx_intro_len);
         if (ret < 0) {
           fprintf(stderr,
-                  "SimBricksBaseIfEstablish: Receiving intro on %zu "
+                  "UbsimBaseIfEstablish: Receiving intro on %zu "
                   "failed\n",
                   i);
           return -1;
         } else if (ret > 0) {
-          pfds[n_pfd].fd = SimbricksBaseIfIntroFd(bif);
+          pfds[n_pfd].fd = UbsimBaseIfIntroFd(bif);
           pfds[n_pfd].events = POLLIN;
           pfds[n_pfd].revents = 0;
           n_pfd++;
@@ -873,13 +873,13 @@ int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs,
 
     if (n_pfd == 0 && established != n) {
       fprintf(stderr,
-              "SimBricksBaseIfEstablish: no poll events to wait for "
+              "UbsimBaseIfEstablish: no poll events to wait for "
               "but not all established (BUG)\n");
       abort();
     } else if (n_pfd > 0) {
       ret = poll(pfds, n_pfd, -1);
       if (ret < 0) {
-        fprintf(stderr, "SimBricksBaseIfEstablish: poll failed\n");
+        fprintf(stderr, "UbsimBaseIfEstablish: poll failed\n");
         return -1;
       }
     }
@@ -888,7 +888,7 @@ int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs,
   return 0;
 }
 
-void SimbricksBaseIfClose(struct SimbricksBaseIf *base_if) {
+void UbsimBaseIfClose(struct UbsimBaseIf *base_if) {
   if (base_if->conn_state == kConnListening) {
     close(base_if->listen_fd);
     base_if->listen_fd = -1;
@@ -900,10 +900,10 @@ void SimbricksBaseIfClose(struct SimbricksBaseIf *base_if) {
 
   if (base_if->conn_state == kConnOpen) {
     // send out termination message
-    volatile union SimbricksProtoBaseMsg *msg;
-    while ((msg = SimbricksBaseIfOutAlloc(base_if, UINT64_MAX)) == NULL) {
+    volatile union UbsimProtoBaseMsg *msg;
+    while ((msg = UbsimBaseIfOutAlloc(base_if, UINT64_MAX)) == NULL) {
     }
-    SimbricksBaseIfOutSend(base_if, msg, SIMBRICKS_PROTO_MSG_TYPE_TERMINATE);
+    UbsimBaseIfOutSend(base_if, msg, UBSIM_PROTO_MSG_TYPE_TERMINATE);
   }
 
   close(base_if->conn_fd);
@@ -913,6 +913,6 @@ void SimbricksBaseIfClose(struct SimbricksBaseIf *base_if) {
   // TODO: if connecting end might need to unmap and free shm
 }
 
-void SimbricksBaseIfUnlink(struct SimbricksBaseIf *base_if) {
+void UbsimBaseIfUnlink(struct UbsimBaseIf *base_if) {
   // TODO
 }

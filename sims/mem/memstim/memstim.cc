@@ -171,12 +171,12 @@ int main(int argc, char *argv[]) {
                       " ops=" + std::to_string(num_ops) +
                       " len=" + std::to_string(len));
 
-  SimbricksBaseIfParams params;
+  UbsimBaseIfParams params;
   ubsim::DefaultMemParams(&params);
 
   if (argc >= 6) {
     params.sync_mode =
-        static_cast<SimbricksBaseIfSyncMode>(std::strtoul(argv[5], nullptr, 0));
+        static_cast<UbsimBaseIfSyncMode>(std::strtoul(argv[5], nullptr, 0));
   }
   if (argc >= 7) {
     g_current_ts = std::strtoull(argv[6], nullptr, 0);

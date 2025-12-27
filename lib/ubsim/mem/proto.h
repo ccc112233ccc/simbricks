@@ -22,13 +22,13 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_MEM_PROTO_H_
-#define SIMBRICKS_MEM_PROTO_H_
+#ifndef UBSIM_MEM_PROTO_H_
+#define UBSIM_MEM_PROTO_H_
 
 #include <assert.h>
 #include <stdint.h>
 
-#include <simbricks/base/proto.h>
+#include <ubsim/base/proto.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,12 +38,12 @@ extern "C" {
 /* Initialization messages on Unix socket */
 
 /** welcome message sent by memory to host. */
-struct SimbricksProtoMemMemIntro {
+struct UbsimProtoMemMemIntro {
   uint32_t dummy; /* not used, but need to avoid empty struct for standard C */
 } __attribute__((packed));
 
 /** welcome message sent by host to memory */
-struct SimbricksProtoMemHostIntro {
+struct UbsimProtoMemHostIntro {
   uint32_t dummy; /* not used, but need to avoid empty struct for standard C */
 } __attribute__((packed));
 
@@ -51,10 +51,10 @@ struct SimbricksProtoMemHostIntro {
 /* Messages on memory to host channel */
 
 /** Mask for type value in own_type field */
-#define SIMBRICKS_PROTO_MEM_M2H_MSG_READCOMP 0x40
-#define SIMBRICKS_PROTO_MEM_M2H_MSG_WRITECOMP 0x41
+#define UBSIM_PROTO_MEM_M2H_MSG_READCOMP 0x40
+#define UBSIM_PROTO_MEM_M2H_MSG_WRITECOMP 0x41
 
-struct SimbricksProtoMemM2HReadcomp {
+struct UbsimProtoMemM2HReadcomp {
   uint64_t req_id;
   uint8_t pad[40];
   uint64_t timestamp;
@@ -62,33 +62,33 @@ struct SimbricksProtoMemM2HReadcomp {
   uint8_t own_type;
   uint8_t data[];
 } __attribute__((packed));
-SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoMemM2HReadcomp);
+UBSIM_PROTO_MSG_SZCHECK(struct UbsimProtoMemM2HReadcomp);
 
-struct SimbricksProtoMemM2HWritecomp {
+struct UbsimProtoMemM2HWritecomp {
   uint64_t req_id;
   uint8_t pad[40];
   uint64_t timestamp;
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoMemM2HWritecomp);
+UBSIM_PROTO_MSG_SZCHECK(struct UbsimProtoMemM2HWritecomp);
 
-union SimbricksProtoMemM2H {
-  union SimbricksProtoBaseMsg base;
-  struct SimbricksProtoMemM2HReadcomp readcomp;
-  struct SimbricksProtoMemM2HWritecomp writecomp;
+union UbsimProtoMemM2H {
+  union UbsimProtoBaseMsg base;
+  struct UbsimProtoMemM2HReadcomp readcomp;
+  struct UbsimProtoMemM2HWritecomp writecomp;
 } __attribute__((packed));
-SIMBRICKS_PROTO_MSG_SZCHECK(union SimbricksProtoMemM2H);
+UBSIM_PROTO_MSG_SZCHECK(union UbsimProtoMemM2H);
 
 /******************************************************************************/
 /* Messages on host to memory channel */
 
-#define SIMBRICKS_PROTO_MEM_H2M_MSG_READ 0x60
-#define SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE 0x61
+#define UBSIM_PROTO_MEM_H2M_MSG_READ 0x60
+#define UBSIM_PROTO_MEM_H2M_MSG_WRITE 0x61
 // treat write as posted so don't send a completion message
-#define SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE_POSTED 0x62
+#define UBSIM_PROTO_MEM_H2M_MSG_WRITE_POSTED 0x62
 
-struct SimbricksProtoMemH2MRead {
+struct UbsimProtoMemH2MRead {
   uint64_t req_id;
   uint64_t as_id;
   uint64_t addr;
@@ -98,9 +98,9 @@ struct SimbricksProtoMemH2MRead {
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoMemH2MRead);
+UBSIM_PROTO_MSG_SZCHECK(struct UbsimProtoMemH2MRead);
 
-struct SimbricksProtoMemH2MWrite {
+struct UbsimProtoMemH2MWrite {
   uint64_t req_id;
   uint64_t as_id;
   uint64_t addr;
@@ -111,17 +111,17 @@ struct SimbricksProtoMemH2MWrite {
   uint8_t own_type;
   uint8_t data[];
 } __attribute__((packed));
-SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoMemH2MWrite);
+UBSIM_PROTO_MSG_SZCHECK(struct UbsimProtoMemH2MWrite);
 
-union SimbricksProtoMemH2M {
-  union SimbricksProtoBaseMsg base;
-  struct SimbricksProtoMemH2MRead read;
-  struct SimbricksProtoMemH2MWrite write;
+union UbsimProtoMemH2M {
+  union UbsimProtoBaseMsg base;
+  struct UbsimProtoMemH2MRead read;
+  struct UbsimProtoMemH2MWrite write;
 } __attribute__((packed));
-SIMBRICKS_PROTO_MSG_SZCHECK(union SimbricksProtoMemH2M);
+UBSIM_PROTO_MSG_SZCHECK(union UbsimProtoMemH2M);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // SIMBRICKS_MEM_PROTO_H_
+#endif  // UBSIM_MEM_PROTO_H_
