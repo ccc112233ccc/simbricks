@@ -45,21 +45,20 @@ bool ManagerPortLoader::LoadFromFile(const std::string &path,
     if (tokens[0] != port_name) {
       continue;
     }
-    if (tokens.size() < 10) {
+    if (tokens.size() < 9) {
       LogError("manager", "malformed port entry for " + port_name);
       return false;
     }
 
     out->name = tokens[0];
     out->channel_type = tokens[1];
-    out->socket_path = tokens[2];
-    out->shm_path = tokens[3];
-    out->in_offset = std::stoull(tokens[4]);
-    out->in_entries = std::stoull(tokens[5]);
-    out->in_entry_size = std::stoull(tokens[6]);
-    out->out_offset = std::stoull(tokens[7]);
-    out->out_entries = std::stoull(tokens[8]);
-    out->out_entry_size = std::stoull(tokens[9]);
+    out->shm_path = tokens[2];
+    out->in_offset = std::stoull(tokens[3]);
+    out->in_entries = std::stoull(tokens[4]);
+    out->in_entry_size = std::stoull(tokens[5]);
+    out->out_offset = std::stoull(tokens[6]);
+    out->out_entries = std::stoull(tokens[7]);
+    out->out_entry_size = std::stoull(tokens[8]);
     return true;
   }
 

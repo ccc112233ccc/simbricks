@@ -20,7 +20,6 @@
       "channel": {
         "type": "shm_ring",
         "options": {
-          "socket_path": "./mem.socket",
           "shm_path": "./mem.shm",
           "entries": 8192,
           "entry_size": 8256

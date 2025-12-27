@@ -16,7 +16,7 @@ python -m ubsim_manager ./sims/mem/topos/basicmem-memstim.json
 ```
 
 The manager creates run-scoped state under `./tmp/ubsim-run-<timestamp>-<pid>`
-inside the repository root and cleans it up automatically when the run ends.
+inside the repository root and keeps it for post-run inspection.
 
 ## Notes
 
@@ -24,3 +24,5 @@ inside the repository root and cleans it up automatically when the run ends.
   metadata to each simulator via `UBSIM_MANAGER_PORTS`.
 * `basicmem` and `memstim` now attach to manager-created channels directly
   without any listener/connecter branching.
+* Each run directory stores per-simulator command lines (`*.cmd`) and logs
+  (`*.stdout.log`/`*.stderr.log`) so you can replay runs without the manager.

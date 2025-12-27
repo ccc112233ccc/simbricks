@@ -2,11 +2,9 @@ import argparse
 import json
 import logging
 import os
-import shutil
 import signal
 import subprocess
 import sys
-import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,7 +23,6 @@ DEFAULT_ENTRY_SIZE = 8256
 @dataclass
 class ChannelInfo:
     channel_type: str
-    socket_path: str
     shm_path: str
     shm_size: int
     entries: int
@@ -36,7 +33,6 @@ class ChannelInfo:
 class PortInfo:
     name: str
     channel_type: str
-    socket_path: str
     shm_path: str
     in_offset: int
     out_offset: int
@@ -71,7 +67,6 @@ def resolve_path(base_dir: Path, raw_path: str) -> Path:
 def prepare_channel(base_dir: Path, channel_cfg: Dict) -> ChannelInfo:
     channel_type = channel_cfg["type"]
     options = channel_cfg.get("options", {})
-    socket_path = resolve_path(base_dir, options.get("socket_path", "-"))
     entries = int(options.get("entries", DEFAULT_ENTRIES))
     entry_size = int(options.get("entry_size", DEFAULT_ENTRY_SIZE))
 
@@ -86,11 +81,6 @@ def prepare_channel(base_dir: Path, channel_cfg: Dict) -> ChannelInfo:
     else:
         raise ValueError(f"Unsupported channel type: {channel_type}")
 
-    if str(socket_path) != "-":
-        socket_path.parent.mkdir(parents=True, exist_ok=True)
-        if socket_path.exists():
-            socket_path.unlink()
-
     if channel_type == "shm_ring":
         shm_path.parent.mkdir(parents=True, exist_ok=True)
         if shm_path.exists():
@@ -100,7 +90,6 @@ def prepare_channel(base_dir: Path, channel_cfg: Dict) -> ChannelInfo:
 
     return ChannelInfo(
         channel_type=channel_type,
-        socket_path=str(socket_path),
         shm_path=str(shm_path),
         shm_size=shm_size,
         entries=entries,
@@ -142,7 +131,6 @@ def build_ports(cfg: Dict, base_dir: Path) -> Dict[str, List[PortInfo]]:
             PortInfo(
                 name=a_port,
                 channel_type=channel_info.channel_type,
-                socket_path=channel_info.socket_path,
                 shm_path=channel_info.shm_path,
                 out_offset=0,
                 in_offset=queue_size,
@@ -154,7 +142,6 @@ def build_ports(cfg: Dict, base_dir: Path) -> Dict[str, List[PortInfo]]:
             PortInfo(
                 name=b_port,
                 channel_type=channel_info.channel_type,
-                socket_path=channel_info.socket_path,
                 shm_path=channel_info.shm_path,
                 out_offset=queue_size,
                 in_offset=0,
@@ -172,9 +159,9 @@ def write_port_file(path: Path, ports: List[PortInfo]) -> None:
         for port in ports:
             shm_path = port.shm_path if port.shm_path else "-"
             handle.write(
-                f"{port.name} {port.channel_type} {port.socket_path} "
-                f"{shm_path} {port.in_offset} {port.entries} {port.entry_size} "
-                f"{port.out_offset} {port.entries} {port.entry_size}\n"
+                f"{port.name} {port.channel_type} {shm_path} {port.in_offset} "
+                f"{port.entries} {port.entry_size} {port.out_offset} "
+                f"{port.entries} {port.entry_size}\n"
             )
 
 
@@ -188,8 +175,10 @@ def run_simulators(cfg: Dict, ports_by_sim: Dict[str, List[PortInfo]]) -> int:
     tmp_base.mkdir(parents=True, exist_ok=True)
     run_dir = tmp_base / f"ubsim-run-{int(time.time())}-{os.getpid()}"
     run_dir.mkdir(parents=True, exist_ok=True)
+    logging.info("run directory: %s", run_dir)
 
     procs: List[subprocess.Popen] = []
+    proc_logs: List[tuple] = []
 
     def cleanup() -> None:
         for proc in procs:
@@ -201,15 +190,9 @@ def run_simulators(cfg: Dict, ports_by_sim: Dict[str, List[PortInfo]]) -> int:
                     proc.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     proc.kill()
-        for ports in ports_by_sim.values():
-            for port in ports:
-                if port.socket_path != "-" and os.path.exists(port.socket_path):
-                    os.unlink(port.socket_path)
-                if port.shm_path and port.shm_path != "-" and os.path.exists(
-                    port.shm_path
-                ):
-                    os.unlink(port.shm_path)
-        shutil.rmtree(run_dir, ignore_errors=True)
+        for stdout_handle, stderr_handle in proc_logs:
+            stdout_handle.close()
+            stderr_handle.close()
 
     def handle_signal(signum, _frame):
         logging.error("manager received signal %s, shutting down", signum)
@@ -225,8 +208,22 @@ def run_simulators(cfg: Dict, ports_by_sim: Dict[str, List[PortInfo]]) -> int:
             write_port_file(port_file, ports_by_sim[sim.name])
             env = os.environ.copy()
             env["UBSIM_MANAGER_PORTS"] = str(port_file)
-            proc = subprocess.Popen([sim.exec_path] + sim.args, env=env)
+            stdout_path = run_dir / f"{sim.name}.stdout.log"
+            stderr_path = run_dir / f"{sim.name}.stderr.log"
+            cmd_path = run_dir / f"{sim.name}.cmd"
+            cmd_line = " ".join([sim.exec_path] + sim.args)
+            cmd_path.write_text(cmd_line + "\n", encoding="utf-8")
+            logging.info("launching %s: %s", sim.name, cmd_line)
+            stdout_handle = open(stdout_path, "w", encoding="utf-8")
+            stderr_handle = open(stderr_path, "w", encoding="utf-8")
+            proc = subprocess.Popen(
+                [sim.exec_path] + sim.args,
+                env=env,
+                stdout=stdout_handle,
+                stderr=stderr_handle,
+            )
             procs.append(proc)
+            proc_logs.append((stdout_handle, stderr_handle))
 
         while True:
             for proc in procs:

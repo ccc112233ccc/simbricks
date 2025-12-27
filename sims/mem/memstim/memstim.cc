@@ -128,6 +128,7 @@ size_t MaxWritePayload(ubsim::MemIf *memif) {
 int main(int argc, char *argv[]) {
   std::signal(SIGINT, HandleSigint);
   std::signal(SIGUSR1, HandleSigusr1);
+  ubsim::Logger::Instance().SetLevel(ubsim::LogLevel::kDebug);
 
   if (argc < 5 || argc > 9) {
     std::fprintf(stderr,
@@ -140,6 +141,10 @@ int main(int argc, char *argv[]) {
   uint64_t as_id = std::strtoull(argv[2], nullptr, 0);
   uint64_t num_ops = std::strtoull(argv[3], nullptr, 0);
   uint16_t len = static_cast<uint16_t>(std::strtoul(argv[4], nullptr, 0));
+  ubsim::LogDebug("memstim",
+                  "starting base_addr=" + std::to_string(base_addr) +
+                      " ops=" + std::to_string(num_ops) +
+                      " len=" + std::to_string(len));
 
   SimbricksBaseIfParams params;
   ubsim::DefaultMemParams(&params);
@@ -164,6 +169,10 @@ int main(int argc, char *argv[]) {
     ubsim::LogError("memstim", "failed to load manager port");
     return EXIT_FAILURE;
   }
+  ubsim::LogDebug("memstim",
+                  "port shm=" + port.shm_path +
+                      " in_offset=" + std::to_string(port.in_offset) +
+                      " out_offset=" + std::to_string(port.out_offset));
 
   params.blocking_conn = true;
 

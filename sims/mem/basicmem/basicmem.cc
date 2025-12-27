@@ -86,6 +86,7 @@ void PollH2M(ubsim::MemIf *memif, uint64_t ts,
 int main(int argc, char *argv[]) {
   std::signal(SIGINT, HandleSigint);
   std::signal(SIGUSR1, HandleSigusr1);
+  ubsim::Logger::Instance().SetLevel(ubsim::LogLevel::kDebug);
 
   if (argc < 4 || argc > 8) {
     std::fprintf(stderr,
@@ -96,6 +97,9 @@ int main(int argc, char *argv[]) {
 
   auto size = static_cast<uint64_t>(std::strtoull(argv[1], nullptr, 0));
   uint64_t base_addr = std::strtoull(argv[2], nullptr, 0);
+  ubsim::LogDebug("basicmem",
+                  "starting with size=" + std::to_string(size) +
+                      " base_addr=" + std::to_string(base_addr));
 
   SimbricksBaseIfParams params;
   ubsim::DefaultMemParams(&params);
@@ -120,6 +124,10 @@ int main(int argc, char *argv[]) {
     ubsim::LogError("basicmem", "failed to load manager port");
     return EXIT_FAILURE;
   }
+  ubsim::LogDebug("basicmem",
+                  "port shm=" + port.shm_path +
+                      " in_offset=" + std::to_string(port.in_offset) +
+                      " out_offset=" + std::to_string(port.out_offset));
 
   params.blocking_conn = true;
 
