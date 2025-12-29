@@ -26,8 +26,6 @@ bin_memstim := $(d)memstim
 
 OBJS := $(d)memstim.o
 
-LDLIBS := -lzmq
-
 $(bin_memstim): $(OBJS) $(lib_mem) $(lib_base) $(lib_ubsim)
 
 CLEAN := $(bin_memstim) $(OBJS)

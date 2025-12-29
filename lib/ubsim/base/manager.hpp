@@ -12,10 +12,6 @@ struct ManagerPort {
   std::string name;
   std::string channel_type;
   std::string shm_path;
-  std::string zmq_in_endpoint;
-  std::string zmq_out_endpoint;
-  bool zmq_in_bind = false;
-  bool zmq_out_bind = false;
   size_t in_offset = 0;
   size_t out_offset = 0;
   size_t in_entries = 0;

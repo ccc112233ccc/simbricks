@@ -41,8 +41,7 @@ std::string HexSnippet(const uint8_t *data, size_t len, size_t max_len = 32) {
   return out.str();
 }
 
-template <typename T>
-volatile ubsim::MemH2M *AllocH2M(T *memif, uint64_t ts) {
+volatile ubsim::MemH2M *AllocH2M(ubsim::MemIf *memif, uint64_t ts) {
   volatile ubsim::MemH2M *msg = nullptr;
   bool warned = false;
   while ((msg = ubsim::H2MOutAlloc(memif, ts)) == nullptr) {
@@ -57,9 +56,9 @@ volatile ubsim::MemH2M *AllocH2M(T *memif, uint64_t ts) {
   return msg;
 }
 
-template <typename T>
-int WaitForCompletion(T *memif, uint64_t req_id, uint8_t expected_type,
-                      const uint8_t *expected_data, uint16_t len) {
+int WaitForCompletion(ubsim::MemIf *memif, uint64_t req_id,
+                      uint8_t expected_type, const uint8_t *expected_data,
+                      uint16_t len) {
   while (!g_exiting) {
     while (ubsim::H2MOutSync(memif, g_current_ts)) {
       ubsim::LogWarn("memstim", "sync failed at timestamp " +
@@ -140,8 +139,7 @@ void FillPattern(uint8_t *buf, uint16_t len, uint64_t seed) {
   }
 }
 
-template <typename T>
-size_t MaxWritePayload(T *memif) {
+size_t MaxWritePayload(ubsim::MemIf *memif) {
   size_t msg_len = ubsim::H2MOutMsgLen(memif);
   size_t header_len = offsetof(ubsim::MemH2MWrite, data);
   if (msg_len <= header_len) {
@@ -202,24 +200,11 @@ int main(int argc, char *argv[]) {
 
   params.blocking_conn = true;
 
-  ubsim::MemTransport::Mode mode = ubsim::MemTransport::Mode::kShm;
-  if (port.channel_type == "zmq") {
-    mode = ubsim::MemTransport::Mode::kZmq;
-  }
-  ubsim::MemTransport memif(mode);
-  if (mode == ubsim::MemTransport::Mode::kShm) {
-    ubsim::ChannelAttachment attachment;
-    if (!attachment.Attach(&memif.shm().base(), &params, port)) {
-      ubsim::LogError("memstim", "failed to attach to manager channel");
-      return EXIT_FAILURE;
-    }
-  } else {
-    if (!memif.zmq().Open(port.zmq_in_endpoint, port.zmq_out_endpoint,
-                          port.zmq_in_bind, port.zmq_out_bind,
-                          port.in_entry_size, port.in_entries, params)) {
-      ubsim::LogError("memstim", "failed to open ZMQ channels");
-      return EXIT_FAILURE;
-    }
+  ubsim::MemIf memif{};
+  ubsim::ChannelAttachment attachment;
+  if (!attachment.Attach(&memif.base(), &params, port)) {
+    ubsim::LogError("memstim", "failed to attach to manager channel");
+    return EXIT_FAILURE;
   }
 
   size_t max_payload = MaxWritePayload(&memif);

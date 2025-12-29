@@ -41,8 +41,7 @@ std::string HexSnippet(const volatile uint8_t *data, size_t len,
   return out.str();
 }
 
-template <typename T>
-volatile ubsim::MemM2H *AllocM2H(T *memif, uint64_t ts) {
+volatile ubsim::MemM2H *AllocM2H(ubsim::MemIf *memif, uint64_t ts) {
   volatile ubsim::MemM2H *msg = nullptr;
   bool warned = false;
   while ((msg = ubsim::M2HOutAlloc(memif, ts)) == nullptr) {
@@ -57,8 +56,8 @@ volatile ubsim::MemM2H *AllocM2H(T *memif, uint64_t ts) {
   return msg;
 }
 
-template <typename T>
-void PollH2M(T *memif, uint64_t ts, std::vector<uint8_t> *memory) {
+void PollH2M(ubsim::MemIf *memif, uint64_t ts,
+             std::vector<uint8_t> *memory) {
   volatile ubsim::MemH2M *msg = ubsim::H2MInPoll(memif, ts);
   if (msg == nullptr) {
     return;
@@ -171,24 +170,11 @@ int main(int argc, char *argv[]) {
   params.blocking_conn = true;
 
   std::vector<uint8_t> memory(size, 0);
-  ubsim::MemTransport::Mode mode = ubsim::MemTransport::Mode::kShm;
-  if (port.channel_type == "zmq") {
-    mode = ubsim::MemTransport::Mode::kZmq;
-  }
-  ubsim::MemTransport memif(mode);
-  if (mode == ubsim::MemTransport::Mode::kShm) {
-    ubsim::ChannelAttachment attachment;
-    if (!attachment.Attach(&memif.shm().base(), &params, port)) {
-      ubsim::LogError("basicmem", "failed to attach to manager channel");
-      return EXIT_FAILURE;
-    }
-  } else {
-    if (!memif.zmq().Open(port.zmq_in_endpoint, port.zmq_out_endpoint,
-                          port.zmq_in_bind, port.zmq_out_bind,
-                          port.in_entry_size, port.in_entries, params)) {
-      ubsim::LogError("basicmem", "failed to open ZMQ channels");
-      return EXIT_FAILURE;
-    }
+  ubsim::MemIf memif{};
+  ubsim::ChannelAttachment attachment;
+  if (!attachment.Attach(&memif.base(), &params, port)) {
+    ubsim::LogError("basicmem", "failed to attach to manager channel");
+    return EXIT_FAILURE;
   }
 
   ubsim::LogInfo("basicmem", "attached to manager channel");

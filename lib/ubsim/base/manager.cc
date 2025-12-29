@@ -59,16 +59,6 @@ bool ManagerPortLoader::LoadFromFile(const std::string &path,
     out->out_offset = std::stoull(tokens[6]);
     out->out_entries = std::stoull(tokens[7]);
     out->out_entry_size = std::stoull(tokens[8]);
-    if (out->channel_type == "zmq") {
-      if (tokens.size() < 13) {
-        LogError("manager", "missing zmq endpoints for " + port_name);
-        return false;
-      }
-      out->zmq_in_endpoint = tokens[9];
-      out->zmq_out_endpoint = tokens[10];
-      out->zmq_in_bind = std::stoi(tokens[11]) != 0;
-      out->zmq_out_bind = std::stoi(tokens[12]) != 0;
-    }
     return true;
   }
 

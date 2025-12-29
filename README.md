@@ -2,10 +2,6 @@
 
 ## Build
 
-### Dependencies
-
-* ZeroMQ development headers (e.g. `libzmq3-dev`) for the ZMQ transport.
-
 ```sh
 make
 ```

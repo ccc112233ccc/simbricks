@@ -27,8 +27,6 @@ class ChannelInfo:
     shm_size: int
     entries: int
     entry_size: int
-    zmq_a_to_b: str
-    zmq_b_to_a: str
 
 
 @dataclass
@@ -40,10 +38,6 @@ class PortInfo:
     out_offset: int
     entries: int
     entry_size: int
-    zmq_in: str
-    zmq_out: str
-    zmq_in_bind: bool
-    zmq_out_bind: bool
 
 
 @dataclass
@@ -80,8 +74,6 @@ def prepare_channel(
 
     shm_path = Path("-")
     shm_size = 0
-    zmq_a_to_b = ""
-    zmq_b_to_a = ""
 
     if channel_type == "shm_ring":
         raw_shm_path = options["shm_path"]
@@ -90,14 +82,6 @@ def prepare_channel(
         else:
             shm_path = (run_dir / raw_shm_path).resolve()
         shm_size = int(options.get("shm_size", entries * entry_size * 2))
-    elif channel_type == "zmq":
-        base_name = str(
-            options.get("zmq_name", f"ubsim-{run_dir.name}-{link_id}")
-        ).strip()
-        if not base_name:
-            base_name = f"ubsim-{run_dir.name}-{link_id}"
-        zmq_a_to_b = f"ipc://{run_dir}/{base_name}-a2b.ipc"
-        zmq_b_to_a = f"ipc://{run_dir}/{base_name}-b2a.ipc"
     elif channel_type == "socket":
         shm_path = Path("-")
     else:
@@ -116,8 +100,6 @@ def prepare_channel(
         shm_size=shm_size,
         entries=entries,
         entry_size=entry_size,
-        zmq_a_to_b=zmq_a_to_b,
-        zmq_b_to_a=zmq_b_to_a,
     )
 
 
@@ -161,10 +143,6 @@ def build_ports(cfg: Dict, base_dir: Path, run_dir: Path) -> Dict[str, List[Port
                 in_offset=queue_size,
                 entries=channel_info.entries,
                 entry_size=channel_info.entry_size,
-                zmq_in=channel_info.zmq_b_to_a,
-                zmq_out=channel_info.zmq_a_to_b,
-                zmq_in_bind=False,
-                zmq_out_bind=True,
             )
         )
         ports_by_sim[b_sim].append(
@@ -176,10 +154,6 @@ def build_ports(cfg: Dict, base_dir: Path, run_dir: Path) -> Dict[str, List[Port
                 in_offset=0,
                 entries=channel_info.entries,
                 entry_size=channel_info.entry_size,
-                zmq_in=channel_info.zmq_a_to_b,
-                zmq_out=channel_info.zmq_b_to_a,
-                zmq_in_bind=True,
-                zmq_out_bind=False,
             )
         )
 
@@ -196,11 +170,6 @@ def write_port_file(path: Path, ports: List[PortInfo]) -> None:
                 f"{port.entries} {port.entry_size} {port.out_offset} "
                 f"{port.entries} {port.entry_size}"
             )
-            if port.channel_type == "zmq":
-                line = (
-                    f"{line} {port.zmq_in} {port.zmq_out} "
-                    f"{int(port.zmq_in_bind)} {int(port.zmq_out_bind)}"
-                )
             handle.write(f"{line}\n")
 
 
