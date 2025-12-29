@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <string>
 
-#include <simbricks/base/if.h>
+#include <ubsim/base/if.h>
 
 namespace ubsim {
 
@@ -30,11 +30,10 @@ class ManagerPortLoader {
 class ChannelAttachment {
  public:
   ChannelAttachment();
-  bool Attach(SimbricksBaseIf *base_if, SimbricksBaseIfParams *params,
-              const ManagerPort &port);
+  bool Attach(BaseIf *base_if, BaseIfParams *params, const ManagerPort &port);
 
  private:
-  SimbricksBaseIfSHMPool pool_;
+  ShmPool pool_;
 };
 
 }  // namespace ubsim

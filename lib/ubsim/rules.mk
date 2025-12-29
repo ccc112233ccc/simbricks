@@ -6,6 +6,7 @@ libubsim_objs :=
 
 $(eval $(call subdir,base))
 $(eval $(call subdir,mem))
+$(eval $(call subdir,axi))
 
 $(lib_ubsim): $(libubsim_objs)
 	$(AR) rcs $@ $(libubsim_objs)

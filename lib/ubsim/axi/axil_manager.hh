@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_AXI_AXIL_MANAGER_HH_
-#define SIMBRICKS_AXI_AXIL_MANAGER_HH_
+#ifndef UBSIM_AXI_AXIL_MANAGER_HH_
+#define UBSIM_AXI_AXIL_MANAGER_HH_
 
 #include <cassert>
 #include <cstddef>
@@ -40,7 +40,7 @@
 // #define AXIL_R_DEBUG
 // #define AXIL_W_DEBUG
 
-namespace simbricks {
+namespace ubsim {
 struct AXILOperationR {
   AXILOperationR(uint64_t addr, uint64_t req_id) : addr(addr), req_id(req_id) {
   }
@@ -434,6 +434,6 @@ void AXILManager<BytesAddr, BytesData>::ports_set_op() {
     write_port_.set_op(std::get<AXILOperationW>(axi_op));
   }
 }
-}  // namespace simbricks
+}  // namespace ubsim
 
-#endif  // SIMBRICKS_AXI_AXIL_MANAGER_HH_
+#endif  // UBSIM_AXI_AXIL_MANAGER_HH_

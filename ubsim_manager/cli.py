@@ -64,7 +64,9 @@ def resolve_path(base_dir: Path, raw_path: str) -> Path:
     return (base_dir / p).resolve()
 
 
-def prepare_channel(base_dir: Path, run_dir: Path, channel_cfg: Dict) -> ChannelInfo:
+def prepare_channel(
+    base_dir: Path, run_dir: Path, channel_cfg: Dict, link_id: str
+) -> ChannelInfo:
     channel_type = channel_cfg["type"]
     options = channel_cfg.get("options", {})
     entries = int(options.get("entries", DEFAULT_ENTRIES))
@@ -118,10 +120,11 @@ def build_ports(cfg: Dict, base_dir: Path, run_dir: Path) -> Dict[str, List[Port
     simulators = parse_simulators(cfg)
     ports_by_sim: Dict[str, List[PortInfo]] = {name: [] for name in simulators}
 
-    for link in cfg.get("links", []):
+    for idx, link in enumerate(cfg.get("links", [])):
         a = link["a"]
         b = link["b"]
-        channel_info = prepare_channel(base_dir, run_dir, link["channel"])
+        link_id = f"link-{idx}"
+        channel_info = prepare_channel(base_dir, run_dir, link["channel"], link_id)
 
         def split_ref(ref: str) -> List[str]:
             sim_name, port_name = ref.split(".")
@@ -162,11 +165,12 @@ def write_port_file(path: Path, ports: List[PortInfo]) -> None:
         handle.write("# UBSIM manager ports v1\n")
         for port in ports:
             shm_path = port.shm_path if port.shm_path else "-"
-            handle.write(
+            line = (
                 f"{port.name} {port.channel_type} {shm_path} {port.in_offset} "
                 f"{port.entries} {port.entry_size} {port.out_offset} "
-                f"{port.entries} {port.entry_size}\n"
+                f"{port.entries} {port.entry_size}"
             )
+            handle.write(f"{line}\n")
 
 
 def repo_root() -> Path:

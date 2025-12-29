@@ -2,7 +2,7 @@ include mk/subdir_pre.mk
 
 lib_ubsim_base := $(d)libubsim_base.a
 
-OBJS := $(addprefix $(d),manager.o)
+OBJS := $(addprefix $(d),manager.o if.o)
 
 libubsim_objs += $(OBJS)
 

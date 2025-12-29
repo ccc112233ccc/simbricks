@@ -21,8 +21,8 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SIMBRICKS_AXI_AXI_SUBORDINATE_HH_
-#define SIMBRICKS_AXI_AXI_SUBORDINATE_HH_
+#ifndef UBSIM_AXI_AXI_SUBORDINATE_HH_
+#define UBSIM_AXI_AXI_SUBORDINATE_HH_
 
 #include <algorithm>
 #include <cassert>
@@ -38,7 +38,7 @@
 // #define AXI_R_DEBUG
 // #define AXI_W_DEBUG
 
-namespace simbricks {
+namespace ubsim {
 struct AXIOperation {
   uint64_t addr;
   size_t len;
@@ -93,7 +93,7 @@ class AXISubordinateRead {
 
   uint64_t main_time_ = 0;
   std::deque<AXIOperation> pending_{};
-  /* map from SimBricks ID to AXI op stored in pending_ */
+  /* map from Ubsim ID to AXI op stored in pending_ */
   std::unordered_map<uint64_t, std::reference_wrapper<AXIOperation>>
       id_op_map_{};
   AXIOperation *cur_op_ = nullptr;
@@ -288,10 +288,10 @@ void AXISubordinateRead<BytesAddr, BytesId, BytesData, MaxInFlight>::step(
 
     uint64_t step_size = pow2(ar_size_);
     assert(ar_burst_ == 1 && "we currently only support INCR bursts");
-    uint64_t simbricks_id = static_cast<uint64_t>(axi_id) << 32 | rolling_id_++;
+    uint64_t ubsim_id = static_cast<uint64_t>(axi_id) << 32 | rolling_id_++;
     AXIOperation &axi_op = pending_.emplace_back(
-        addr, step_size * (ar_len_ + 1), simbricks_id, step_size);
-    auto res = id_op_map_.emplace(simbricks_id, axi_op);
+        addr, step_size * (ar_len_ + 1), ubsim_id, step_size);
+    auto res = id_op_map_.emplace(ubsim_id, axi_op);
     assert(
         res.second &&
         "AXISubordinateRead::step() id_op_map_.emplace() must be successful");
@@ -336,12 +336,12 @@ void AXISubordinateRead<BytesAddr, BytesId, BytesData,
 template <size_t BytesAddr, size_t BytesId, size_t BytesData,
           size_t MaxInFlight>
 void AXISubordinateRead<BytesAddr, BytesId, BytesData, MaxInFlight>::read_done(
-    uint64_t simbricks_id, const uint8_t *data) {
+    uint64_t ubsim_id, const uint8_t *data) {
 #ifdef AXI_R_DEBUG
   std::cout << main_time_ << " AXI R: read_done id=0x" << std::hex
-            << simbricks_id << std::dec << "\n";
+            << ubsim_id << std::dec << "\n";
 #endif
-  AXIOperation &axi_op = id_op_map_.at(simbricks_id);
+  AXIOperation &axi_op = id_op_map_.at(ubsim_id);
   std::memcpy(axi_op.buf.get(), data, axi_op.len);
   axi_op.completed = true;
 }
@@ -453,5 +453,5 @@ void AXISubordinateWrite<BytesAddr, BytesId, BytesData,
 #endif
   num_pending_--;
 }
-}  // namespace simbricks
-#endif  // SIMBRICKS_AXI_AXI_SUBORDINATE_HH_
+}  // namespace ubsim
+#endif  // UBSIM_AXI_AXI_SUBORDINATE_HH_

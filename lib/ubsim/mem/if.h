@@ -22,34 +22,46 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_MEM_IF_H_
-#define SIMBRICKS_MEM_IF_H_
+#ifndef UBSIM_MEM_IF_H_
+#define UBSIM_MEM_IF_H_
 
-#include <stddef.h>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
 
-#include <simbricks/base/generic.h>
-#include <simbricks/base/if.h>
-#include <simbricks/mem/proto.h>
+#include <ubsim/base/if.h>
+#include <ubsim/mem/proto.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace ubsim {
 
-void SimbricksMemIfDefaultParams(struct SimbricksBaseIfParams *params);
+class MemIf {
+ public:
+  BaseIf &base() { return base_; }
+  const BaseIf &base() const { return base_; }
 
-struct SimbricksMemIf {
-  struct SimbricksBaseIf base;
+  static BaseIfParams DefaultParams();
+
+  volatile UbsimProtoMemH2M *H2MOutAlloc(uint64_t ts);
+  void H2MOutSend(volatile UbsimProtoMemH2M *msg, uint8_t type);
+  int H2MOutSync(uint64_t ts);
+  size_t H2MOutMsgLen() const;
+
+  volatile UbsimProtoMemH2M *H2MInPoll(uint64_t ts);
+  uint8_t H2MInType(volatile UbsimProtoMemH2M *msg) const;
+  void H2MInDone(volatile UbsimProtoMemH2M *msg);
+  uint64_t H2MInTimestamp() const;
+
+  volatile UbsimProtoMemM2H *M2HOutAlloc(uint64_t ts);
+  void M2HOutSend(volatile UbsimProtoMemM2H *msg, uint8_t type);
+
+  volatile UbsimProtoMemM2H *M2HInPoll(uint64_t ts);
+  uint8_t M2HInType(volatile UbsimProtoMemM2H *msg) const;
+  void M2HInDone(volatile UbsimProtoMemM2H *msg);
+  uint64_t M2HInTimestamp() const;
+
+ private:
+  BaseIf base_;
 };
 
-/** Generate queue access functions for both directions */
-SIMBRICKS_BASEIF_GENERIC(SimbricksMemIfH2M, SimbricksProtoMemH2M,
-                         SimbricksMemIf);
-SIMBRICKS_BASEIF_GENERIC(SimbricksMemIfM2H, SimbricksProtoMemM2H,
-                         SimbricksMemIf);
+}  // namespace ubsim
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif  // SIMBRICKS_MEM_IF_H_
+#endif  // UBSIM_MEM_IF_H_

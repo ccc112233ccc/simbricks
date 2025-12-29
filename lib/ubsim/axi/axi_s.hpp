@@ -22,28 +22,28 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
- #ifndef SIMBRICKS_AXI_STREAM_HH_
- #define SIMBRICKS_AXI_STREAM_HH_
- 
- #include <stddef.h>
- 
- #include <algorithm>
- #include <array>
- #include <exception>
- #include <type_traits>
- 
- #include "lib/utils/log.h"
- #include "lib/utils/util.hpp"
- 
-//  #define AXIS_DEBUG 0
- 
- namespace simbricks {
+#ifndef UBSIM_AXI_STREAM_HH_
+#define UBSIM_AXI_STREAM_HH_
+
+#include <stddef.h>
+
+#include <algorithm>
+#include <array>
+#include <exception>
+#include <type_traits>
+
+#include "lib/utils/log.h"
+#include "lib/utils/util.hpp"
+
+// #define AXIS_DEBUG 0
+
+namespace ubsim {
  
  namespace core {
  
  template <size_t BufferSize = 2048,
            typename = typename std::enable_if_t<
-               (BufferSize >= 2048) and simbricks::isPowerOfTwo(BufferSize)>>
+               (BufferSize >= 2048) and ubsim::isPowerOfTwo(BufferSize)>>
  class ManagerBuffer {
    std::array<uint8_t, BufferSize> packet_buf_{0};
    size_t packet_len_ = 0;
@@ -67,7 +67,7 @@
    uint8_t read() noexcept {
      if (done()) {
        sim_log::LogError(
-           "simbricks::core::ManagerBuffer::read try reading past packet\n");
+           "ubsim::core::ManagerBuffer::read try reading past packet\n");
        std::terminate();
      }
      uint8_t res = packet_buf_[read_offset_];
@@ -78,7 +78,7 @@
  
  template <size_t BufferSize = 2048,
            typename = typename std::enable_if_t<
-               (BufferSize >= 2048) and simbricks::isPowerOfTwo(BufferSize)>>
+               (BufferSize >= 2048) and ubsim::isPowerOfTwo(BufferSize)>>
  class SubordinateBuffer {
    std::array<uint8_t, BufferSize> packet_buf_{0};
    size_t packet_len_ = 0;
@@ -100,7 +100,7 @@
    void setNextByte(uint8_t by) {
      if (full()) {
        sim_log::LogError(
-           "simbricks::core::SubordinateBuffer::setNextByte past packet "
+           "ubsim::core::SubordinateBuffer::setNextByte past packet "
            "buffer\n");
        std::terminate();
      }
@@ -122,7 +122,7 @@
            size_t BufferSize = 2048,
            typename = typename std::enable_if_t<
                (DataWidthBytes >= 1) and (DataWidthBytes <= 128) and
-               simbricks::isPowerOfTwo(DataWidthBytes) and (AmountSlots > 0)>>
+               ubsim::isPowerOfTwo(DataWidthBytes) and (AmountSlots > 0)>>
  class AXISManager {
    /**
     * TVALID indicates the Transmitter is driving a valid transfer. A transfer
@@ -189,7 +189,7 @@
    void move_read_head() noexcept {
      if (not buffer_ring_[read_index_].done()) {
        sim_log::LogError(
-           "simbricks::core::AXISManager::move_read_head cant move read head, "
+           "ubsim::core::AXISManager::move_read_head cant move read head, "
            "current buffer is not done yet\n");
        std::terminate();
      }
@@ -249,7 +249,7 @@
    }
  
    /**
-    * When implementing the exchange of SimBricks messages within a Simulators
+    * When implementing the exchange of Ubsim messages within a Simulators
     * adapter, this method shall be called if e.g. the AXI stream interface
     * receives a packet. This can e.g. happen if a NIC receives a network packet.
     */
@@ -260,12 +260,12 @@
  
      if (data == nullptr or len == 0) {
        sim_log::LogError(
-           "simbricks::core::AXISManager::read no packet data given\n");
+           "ubsim::core::AXISManager::read no packet data given\n");
        std::terminate();
      }
      if (full()) {
        sim_log::LogError(
-           "simbricks::core::AXISManager::read drop packet as ring buffer is "
+           "ubsim::core::AXISManager::read drop packet as ring buffer is "
            "full");
        std::terminate();
      }
@@ -329,8 +329,8 @@
  template <
      size_t DataWidthBytes = 4, size_t PacketBufSize = 2048,
      typename = typename std::enable_if_t<
-         (DataWidthBytes >= 1) and simbricks::isPowerOfTwo(DataWidthBytes) and
-         (PacketBufSize >= 2048) and simbricks::isPowerOfTwo(PacketBufSize) and
+         (DataWidthBytes >= 1) and ubsim::isPowerOfTwo(DataWidthBytes) and
+         (PacketBufSize >= 2048) and ubsim::isPowerOfTwo(PacketBufSize) and
          (DataWidthBytes <= 128)>>
  class AXISSubordinate {
    /**
@@ -444,7 +444,7 @@
  
      if (packet_buf_.done() or packet_buf_.full()) {
        sim_log::LogError(
-           "simbricks::core::AXISSubordinate::step cannot step, finished not "
+           "ubsim::core::AXISSubordinate::step cannot step, finished not "
            "yet transmitted packet buffer present\n");
        std::terminate();
      }
@@ -469,9 +469,9 @@
    }
  
    /**
-    * When implementing the exchange of SimBricks messages within a Simulators
+    * When implementing the exchange of Ubsim messages within a Simulators
     * adapter,this method shall be called to copy the packet data into the
-    * SimBricks message buffer.
+    * Ubsim message buffer.
     */
    void write(uint8_t *destination, size_t *len, uint8_t &user) noexcept {
  #ifdef AXIS_DEBUG
@@ -480,7 +480,7 @@
  
      if (not packet_buf_.done()) {
        sim_log::LogError(
-           "simbricks::core::AXISSubordinate::write cannot write, packet within "
+           "ubsim::core::AXISSubordinate::write cannot write, packet within "
            "buffer isn't done yet\n");
        std::terminate();
      }
@@ -489,6 +489,6 @@
    }
  };
  
- }  // namespace simbricks
+ }  // namespace ubsim
  
- #endif  // SIMBRICKS_AXI_STREAM_HH_
+ #endif  // UBSIM_AXI_STREAM_HH_

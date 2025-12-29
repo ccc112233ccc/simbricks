@@ -1,6 +1,6 @@
 include mk/subdir_pre.mk
 
-OBJS := $(addprefix $(d),if.o)
+OBJS :=
 
 libubsim_objs += $(OBJS)
 

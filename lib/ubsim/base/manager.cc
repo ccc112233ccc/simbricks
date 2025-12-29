@@ -76,24 +76,26 @@ bool ManagerPortLoader::LoadFromEnv(const std::string &port_name,
   return LoadFromFile(env, port_name, out);
 }
 
-ChannelAttachment::ChannelAttachment() {
-  std::memset(&pool_, 0, sizeof(pool_));
-}
+ChannelAttachment::ChannelAttachment() = default;
 
-bool ChannelAttachment::Attach(SimbricksBaseIf *base_if,
-                               SimbricksBaseIfParams *params,
+bool ChannelAttachment::Attach(BaseIf *base_if, BaseIfParams *params,
                                const ManagerPort &port) {
   if (port.channel_type != "shm_ring") {
     LogError("manager", "unsupported channel type: " + port.channel_type);
     return false;
   }
 
-  if (SimbricksBaseIfInit(base_if, params)) {
+  if (base_if == nullptr || params == nullptr) {
+    LogError("manager", "invalid base interface parameters");
+    return false;
+  }
+
+  if (base_if->Init(*params)) {
     LogError("manager", "failed to init base interface");
     return false;
   }
 
-  if (SimbricksBaseIfSHMPoolMap(&pool_, port.shm_path.c_str()) != 0) {
+  if (pool_.Map(port.shm_path) != 0) {
     LogError("manager", "failed to map shared memory: " + port.shm_path);
     return false;
   }
@@ -102,12 +104,12 @@ bool ChannelAttachment::Attach(SimbricksBaseIf *base_if,
   params->out_num_entries = port.out_entries;
   params->in_entries_size = port.in_entry_size;
   params->out_entries_size = port.out_entry_size;
-  base_if->params = *params;
+  base_if->params() = *params;
 
-  return SimbricksBaseIfManagerSetup(base_if, &pool_, port.in_offset,
-                                     port.out_offset, port.in_entries,
-                                     port.out_entries, port.in_entry_size,
-                                     port.out_entry_size) == 0;
+  return base_if->ManagerSetup(&pool_, port.in_offset, port.out_offset,
+                               port.in_entries, port.out_entries,
+                               port.in_entry_size,
+                               port.out_entry_size) == 0;
 }
 
 }  // namespace ubsim
